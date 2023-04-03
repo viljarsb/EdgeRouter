@@ -9,7 +9,7 @@ import Protocols.MMTP.Validators.MMTPValidator;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectForwardRequest;
 import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectForwardRequest;
-import com.mms.EdgeRouter.RemoteMessageEvent;
+import com.mms.EdgeRouter.ActiveMQ.events.RemoteMessageEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;

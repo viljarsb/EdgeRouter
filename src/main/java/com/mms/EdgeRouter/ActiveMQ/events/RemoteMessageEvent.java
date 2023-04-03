@@ -1,4 +1,4 @@
-package com.mms.EdgeRouter;
+package com.mms.EdgeRouter.ActiveMQ.events;
 
 import org.springframework.context.ApplicationEvent;
 

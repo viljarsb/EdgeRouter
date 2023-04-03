@@ -1,6 +1,6 @@
 package com.mms.EdgeRouter.ActiveMQ;
 
-import com.mms.EdgeRouter.RemoteMessageEvent;
+import com.mms.EdgeRouter.ActiveMQ.events.RemoteMessageEvent;
 import jakarta.jms.BytesMessage;
 import jakarta.jms.JMSException;
 import jakarta.jms.Message;

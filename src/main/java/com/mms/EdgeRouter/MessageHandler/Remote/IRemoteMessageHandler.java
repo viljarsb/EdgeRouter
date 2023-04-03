@@ -1,6 +1,6 @@
 package com.mms.EdgeRouter.MessageHandler.Remote;
 
-import com.mms.EdgeRouter.RemoteMessageEvent;
+import com.mms.EdgeRouter.ActiveMQ.events.RemoteMessageEvent;
 
 /**
  * Interface for services responsible for handling remote messages received from other brokers.

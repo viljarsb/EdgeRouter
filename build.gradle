@@ -31,6 +31,12 @@ dependencies {
     implementation 'com.github.vladimir-bukhtoyarov:bucket4j-core:7.6.0'
     implementation 'org.jmdns:jmdns:3.5.5'
 
+    implementation 'de.codecentric:spring-boot-admin-starter-client:3.0.2'
+
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
+
 }
 
 tasks.named('test') {
