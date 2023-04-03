@@ -1,9 +1,12 @@
 package Protocols.MMTP.Validators;
 
 
-import MMS.Client.Exceptions.MMTPValidationException;
-import MMS.Misc.MrnValidator;
-import MMS.Protocols.MMTP.MessageFormats.*;
+import Misc.MrnValidator;
+import Protocols.MMTP.Exceptions.MMTPValidationException;
+import Protocols.MMTP.MessageFormats.DirectApplicationMessage;
+import Protocols.MMTP.MessageFormats.Register;
+import Protocols.MMTP.MessageFormats.SubjectCastApplicationMessage;
+import Protocols.MMTP.MessageFormats.Unregister;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -159,46 +162,5 @@ public class MMTPValidator
         {
             throw new MMTPValidationException("want_direct_messages must be false when present");
         }
-    }
-
-
-    /**
-     * Validates a RoutingUpdate message.
-     *
-     * @param message the message to validate
-     * @return true if the message is valid, false otherwise
-     */
-    public static boolean validate(RoutingUpdate message)
-    {
-        // Validate MRNs and subjects
-        boolean hasMrn = false;
-        boolean hasSubject = false;
-
-        for (String mrn : message.getMRNsList())
-        {
-            if (!MrnValidator.validate(mrn))
-            {
-                return false;
-            }
-            hasMrn = true;
-        }
-
-        for (String subject : message.getSubjectsList())
-        {
-            if (subject == null || subject.length() < 1 || subject.length() > 100)
-            {
-                return false;
-            }
-            hasSubject = true;
-        }
-
-        // Check if there is at least one MRN or one subject
-        if (!hasMrn && !hasSubject)
-        {
-            return false;
-        }
-
-        // All checks passed
-        return true;
     }
 }

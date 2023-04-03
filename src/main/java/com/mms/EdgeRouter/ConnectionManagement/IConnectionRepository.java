@@ -7,12 +7,14 @@ import org.springframework.web.socket.WebSocketSession;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Contract for a repository that manages the connections from the WebSocket clients.
+ */
 public interface IConnectionRepository
 {
-    void closeConnection(String AgentID, int statusCode, String reason);
-    void closeAllConnections(int statusCode, String reason);
-    Optional<PKIIdentity> getIdentity(String AgentID);
-    Optional<WebSocketSession> getSession(String AgentID);
+    Optional<PKIIdentity> getIdentity(String agentID);
+    Optional<WebSocketSession> getSession(String agentID);
+    List<WebSocketSession> getSessions(List<String> agentIDs);
     int getConnectionCount();
     List<ClientConnectionContext> getAllConnections();
 }

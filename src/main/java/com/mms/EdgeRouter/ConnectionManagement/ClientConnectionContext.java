@@ -20,20 +20,12 @@ import java.util.UUID;
  */
 public class ClientConnectionContext implements Comparable<ClientConnectionContext>
 {
-
-
     @Getter
     private final WebSocketSession session;
-
-
     @Getter
     private final URI connectionURI;
-
-
     @Getter
     private final String agentID;
-
-
     @Getter
     private PKIIdentity identity;
 

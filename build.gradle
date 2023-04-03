@@ -1,7 +1,8 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.0.5'
-	id 'io.spring.dependency-management' version '1.1.0'
+    id 'java'
+    id "org.springframework.boot" version "3.0.5"
+    id 'io.spring.dependency-management' version '1.1.0'
+    id 'com.google.protobuf' version '0.8.17'
 }
 
 group = 'com.mms'
@@ -9,19 +10,29 @@ version = '0.0.1-SNAPSHOT'
 sourceCompatibility = '17'
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
+
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-artemis'
-	implementation 'org.springframework.boot:spring-boot-starter-websocket'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    implementation 'org.springframework.boot:spring-boot-starter-artemis'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
-	implementation 'org.projectlombok:lombok:1.18.20'
+    implementation 'net.maritimeconnectivity.pki:mcp-pki:1.1.0-RC1'
 
-	implementation 'net.maritimeconnectivity.pki:mcp-pki:1.1.0-RC1'
+    implementation 'com.google.protobuf:protobuf-java:3.22.2'
+
+
+    compileOnly 'org.projectlombok:lombok:1.18.20'
+    annotationProcessor 'org.projectlombok:lombok:1.18.20'
+    implementation 'com.google.guava:guava:30.0-jre'
+// https://mvnrepository.com/artifact/com.github.vladimir-bukhtoyarov/bucket4j-core
+    implementation 'com.github.vladimir-bukhtoyarov:bucket4j-core:7.6.0'
+    implementation 'org.jmdns:jmdns:3.5.5'
+
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }

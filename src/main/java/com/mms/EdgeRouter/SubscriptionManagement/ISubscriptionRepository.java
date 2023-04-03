@@ -4,16 +4,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Interface for managing subscriptions to subjects and MRNs. Subscriptions can be added and removed
+ * for individual subjects and MRNs, and clients can query for the current set of subscribers to a given
+ * subject or MRN.
+ */
 public interface ISubscriptionRepository
 {
-    void subscribeToSubjects(List<String> subject, String agentID);
-    void unsubscribeFromSubjects(List<String> subjects, String agentID);
-    void subscribeToMrn(String agentID);
-    void unsubscribeFromMrn(String agentID);
-    Set<String> getSubscribersBySubject(String subject);
-    Set<String> getSubscribersBySubjects(List<String> subjects);
-    Set<String> getSubscribersByMrn(String mrn);
-    Set<String> getSubscribersByMrns(List<String> mrns);
-    Map<String, String> getSubjectSubscriptionMap();
-    Map<String, String> getMrnSubscriptionMap();
+    List<String> getSubscribersBySubject(String subject);
+    List<String> getSubscribersBySubjects(List<String> subjects);
+    List<String> getSubscribersByMrn(String mrn);
+    List<String> getSubscribersByMrns(List<String> mrns);
+    Map<String, List<String>> getSubjectSubscriptionMap();
+    Map<String, List<String>> getMrnSubscriptionMap();
 }
