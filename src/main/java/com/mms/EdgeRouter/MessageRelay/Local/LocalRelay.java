@@ -92,8 +92,8 @@ public class LocalRelay implements ILocalRelay
     {
         List<String> recipients = message.getRecipientsList();
         List<String> agents = subscriptionRepository.getSubscribersByMrns(recipients);
-        agents.removeIf(agent -> messageTracker.checkRebound(message.getId(), agent) || messageTracker.checkDeliveryStatus(message.getId(), agent));
         List<WebSocketSession> sessions = connectionRepository.getSessions(agents);
+        sessions.removeIf(agent -> messageTracker.checkRebound(message.getId(), agent.getId()) || messageTracker.checkDeliveryStatus(message.getId(), agent.getId()));
         serializeAndSend(message.toByteString(), MessageType.DIRECT_APPLICATION_MESSAGE, sessions, message.getId());
     }
 
@@ -109,6 +109,7 @@ public class LocalRelay implements ILocalRelay
         String subject = message.getSubject();
         List<String> agents = subscriptionRepository.getSubscribersBySubject(subject);
         List<WebSocketSession> sessions = connectionRepository.getSessions(agents);
+        sessions.removeIf(agent -> messageTracker.checkRebound(message.getId(), agent.getId()) || messageTracker.checkDeliveryStatus(message.getId(), agent.getId()));
         serializeAndSend(message.toByteString(), MessageType.SUBJECT_CAST_APPLICATION_MESSAGE, sessions, message.getId());
     }
 

@@ -24,6 +24,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -268,7 +269,7 @@ public class ConnectionRepository implements IConnectionRepository
     @Override
     public List<WebSocketSession> getSessions(@NonNull List<String> agentIDs)
     {
-        return agentIDs.stream().map(this::getSession).filter(Optional::isPresent).map(Optional::get).toList();
+        return new ArrayList<>(agentIDs.stream().map(this::getSession).filter(Optional::isPresent).map(Optional::get).toList());
     }
 
 

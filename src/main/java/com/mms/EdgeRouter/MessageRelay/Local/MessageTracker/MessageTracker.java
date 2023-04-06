@@ -2,7 +2,9 @@ package com.mms.EdgeRouter.MessageRelay.Local.MessageTracker;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
@@ -18,30 +20,16 @@ import java.util.concurrent.TimeUnit;
  * A better solution should be implemented in v2.
  */
 @Slf4j
-@Repository
 public class MessageTracker implements IMessageTracker
 {
-
     private final Cache<String, String> reboundTracker;
     private final Cache<String, String> deliveryTracker;
 
-    @Value("${mms.reboundTracker.maxSize:20000}")
-    private int reboundTrackerMaxSize;
-
-    @Value("${mms.reboundTracker.expireAfterWrite:10}")
-    private int reboundTrackerExpiry;
-
-    @Value("${mms.deliveryTracker.maxSize:20000}")
-    private int deliveryTrackerMaxSize;
-
-    @Value("${mms.deliveryTracker.expireAfterWrite:10}")
-    private int deliveryTrackerExpiry;
-
 
     /**
-     * Constructs a new {@link MessageTracker} with a cache that can hold 1000 messages for 10 minutes.
+     * Constructs a new {@link MessageTracker} with the given caches.
      */
-    public MessageTracker()
+    public MessageTracker(@Value("${mms.reboundTracker.maxSize:20000}") int reboundTrackerMaxSize, @Value("${mms.reboundTracker.expireAfterWrite:10}") int reboundTrackerExpiry, @Value("${mms.deliveryTracker.maxSize:20000}") int deliveryTrackerMaxSize, @Value("${mms.deliveryTracker.expireAfterWrite:10}") int deliveryTrackerExpiry)
     {
         this.reboundTracker = CacheBuilder.newBuilder()
                 .maximumSize(reboundTrackerMaxSize)
@@ -52,6 +40,9 @@ public class MessageTracker implements IMessageTracker
                 .maximumSize(deliveryTrackerMaxSize)
                 .expireAfterWrite(deliveryTrackerExpiry, TimeUnit.MINUTES)
                 .build();
+
+        log.info("MessageTracker initialized with reboundTrackerMaxSize={}, reboundTrackerExpiry={}, deliveryTrackerMaxSize={}, " +
+                "deliveryTrackerExpiry={}", reboundTrackerMaxSize, reboundTrackerExpiry, deliveryTrackerMaxSize, deliveryTrackerExpiry);
     }
 
 
@@ -65,7 +56,7 @@ public class MessageTracker implements IMessageTracker
     public void registerSent(String messageId, String agentID)
     {
         log.info("Registering sent message={} from agent={}", messageId, agentID);
-        reboundTracker.put(agentID, messageId);
+        reboundTracker.put(messageId, agentID);
     }
 
 
@@ -79,8 +70,8 @@ public class MessageTracker implements IMessageTracker
     @Override
     public boolean checkRebound(String messageId, String agentID)
     {
-        String cachedMessageId = reboundTracker.getIfPresent(agentID);
-        return cachedMessageId != null && cachedMessageId.equals(messageId);
+        String cachedAgentId = reboundTracker.getIfPresent(messageId);
+        return cachedAgentId != null && cachedAgentId.equals(agentID);
     }
 
 
@@ -94,7 +85,7 @@ public class MessageTracker implements IMessageTracker
     public void registerDelivery(String messageId, String agentID)
     {
         log.info("Registering delivery of message={} to agent={}", messageId, agentID);
-        deliveryTracker.put(agentID, messageId);
+        deliveryTracker.put(messageId, agentID);
     }
 
 
@@ -108,7 +99,7 @@ public class MessageTracker implements IMessageTracker
     @Override
     public boolean checkDeliveryStatus(String messageId, String agentID)
     {
-        String cachedMessageId = deliveryTracker.getIfPresent(agentID);
-        return cachedMessageId != null && cachedMessageId.equals(messageId);
+        String cachedAgentId = deliveryTracker.getIfPresent(messageId);
+        return cachedAgentId != null && cachedAgentId.equals(agentID);
     }
 }
