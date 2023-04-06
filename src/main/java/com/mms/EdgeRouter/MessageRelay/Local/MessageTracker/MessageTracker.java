@@ -2,9 +2,7 @@ package com.mms.EdgeRouter.MessageRelay.Local.MessageTracker;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
@@ -19,6 +17,7 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * A better solution should be implemented in v2.
  */
+@Repository
 @Slf4j
 public class MessageTracker implements IMessageTracker
 {

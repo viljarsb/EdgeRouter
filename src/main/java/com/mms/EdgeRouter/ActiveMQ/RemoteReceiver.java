@@ -48,7 +48,7 @@ public class RemoteReceiver implements MessageListener
     {
         try
         {
-            log.info("Received message from topic {}: {}", message.getJMSDestination(), message);
+            log.info("Received message from topic={}, jms-id={}", message.getJMSDestination(), message.getJMSMessageID());
         }
         catch (JMSException ex)
         {
@@ -62,13 +62,14 @@ public class RemoteReceiver implements MessageListener
                 byte[] data = new byte[(int) bytesMessage.getBodyLength()];
                 bytesMessage.readBytes(data);
                 ByteBuffer buffer = ByteBuffer.wrap(data);
-                log.info("Received message from topic {}: {}", message.getJMSDestination(), buffer);
+                log.info("Received message from topic={}", message.getJMSDestination());
                 RemoteMessageEvent remoteMessageEvent = new RemoteMessageEvent(this, buffer);
                 eventPublisher.publishEvent(remoteMessageEvent);
             }
+
             else
             {
-                log.warn("Received unsupported message type: {}", message.getClass().getName());
+                log.warn("Received unsupported message type={}", message.getClass().getName());
             }
         }
         catch (JMSException ex)
