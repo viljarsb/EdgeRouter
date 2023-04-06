@@ -55,7 +55,7 @@ public class mDNSService
     {
         ServiceInfo serviceInfo = ServiceInfo.create(SERVICE_TYPE, serviceName, port, "path=" + path);
         jmDNS.registerService(serviceInfo);
-        log.info("Registered edge router service with mDNS: {}", serviceInfo);
+        log.info("Registered edge router service={}, with mDNS", serviceInfo);
     }
 
 
@@ -68,8 +68,9 @@ public class mDNSService
     @PreDestroy
     public void close() throws IOException
     {
+        log.info("Attempting to unregister edge router service from mDNS and close JmDNS instance.");
         jmDNS.unregisterAllServices();
         jmDNS.close();
-        log.info("Unregistered edge router service from mDNS and closed JmDNS instance.");
+        log.info("Successfully unregistered edge router service from mDNS and closed JmDNS instance.");
     }
 }

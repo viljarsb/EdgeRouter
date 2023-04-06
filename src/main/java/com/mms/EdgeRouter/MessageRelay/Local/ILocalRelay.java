@@ -9,6 +9,5 @@ import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectMessageForwardRequest;
 public interface ILocalRelay
 {
     void onLocalForwardingRequest(LocalDirectMessageForwardRequest event);
-
     void onLocalForwardingRequest(LocalSubjectMessageForwardRequest event);
 }

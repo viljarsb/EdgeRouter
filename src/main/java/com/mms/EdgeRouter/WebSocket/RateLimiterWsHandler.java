@@ -75,7 +75,7 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
         this.connectionAttempts = CacheBuilder.newBuilder().expireAfterWrite(blacklistTime, TimeUnit.MINUTES).build();
 
 
-        log.info("RateLimiterWsHandler initialized with maxConnectionsPerSecond: {}, maxBytesPerSecond: {}, maxConcurrentConnections: {}, blacklistTime: {}", maxConnectionsPerSecond, maxBytesPerSecond, maxConcurrentConnections, blacklistTime);
+        log.info("RateLimiterWsHandler initialized with maxConnectionsPerSecond={}, maxBytesPerSecond={}, maxConcurrentConnections={}, blacklistTime={}", maxConnectionsPerSecond, maxBytesPerSecond, maxConcurrentConnections, blacklistTime);
     }
 
 
@@ -109,14 +109,14 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
             }
             else
             {
-                log.warn("Connection attempt from IP: {} exceeded max concurrent connections: {}", remoteAddress, attempts);
+                log.warn("Connection attempt from IP={} exceeded max concurrent connections={}", remoteAddress, attempts);
                 blockIP(remoteAddress);
                 denyConnection(session, CloseStatus.SERVICE_OVERLOAD.getCode(), "Too many requests from this IP");
             }
         }
         else
         {
-            log.warn("Connection attempt from blocked IP: {}", remoteAddress);
+            log.warn("Connection attempt from blocked IP={}", remoteAddress);
             denyConnection(session, CloseStatus.SERVICE_OVERLOAD.getCode(), "IP is blocked or too many connections");
         }
     }
@@ -159,13 +159,13 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
         {
             try
             {
-                log.warn("Received text message from session: {}, terminating connection", session.getId());
+                log.warn("Received text message from agent={}, terminating connection", session.getId());
                 CloseStatus status = new CloseStatus(CloseStatus.BAD_DATA.getCode(), "Only binary messages are supported");
                 session.close(status);
             }
             catch (IOException ex)
             {
-                log.error("Error closing session: {}", session.getId(), ex);
+                log.error("Error closing agent={}", session.getId(), ex);
             }
         }
         else if (message instanceof BinaryMessage)
@@ -193,7 +193,7 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
         }
         catch (Exception e)
         {
-            log.error("Error processing message from session: {}", session.getId(), e);
+            log.error("Error processing message from agent={}", session.getId(), e);
         }
     }
 
@@ -219,7 +219,7 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
         }
 
         long waitTimeMillis = consumptionProbe.getNanosToWaitForRefill() / 1_000_000;
-        log.debug("No tokens available for session: {}, waiting {}ms", session.getId(), waitTimeMillis);
+        log.debug("No message tokens available for agent={}, waiting {}ms", session.getId(), waitTimeMillis);
 
         CompletableFuture.delayedExecutor(waitTimeMillis, TimeUnit.MILLISECONDS, workerPool).execute(() -> applyRateLimitWithDelayAndHandleExceptions(message, session, rateLimiterBucket, payloadSize));
     }
@@ -243,7 +243,7 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
         }
         catch (Exception e)
         {
-            log.error("Error applying rate limit with delay for session: {}", session.getId(), e);
+            log.error("Error applying rate limit with delay for agent={}", session.getId(), e);
         }
     }
 
@@ -289,7 +289,7 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
         }
         catch (IOException ex)
         {
-            log.error("Error closing session: {}", session.getId(), ex);
+            log.error("Error closing session for agent={}", session.getId(), ex);
         }
     }
 }

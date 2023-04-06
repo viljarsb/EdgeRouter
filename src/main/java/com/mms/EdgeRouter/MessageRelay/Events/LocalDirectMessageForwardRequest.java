@@ -13,7 +13,6 @@ public final class LocalDirectMessageForwardRequest extends ApplicationEvent
 {
     private final DirectApplicationMessage message;
 
-
     /**
      * Constructs a new {@link LocalDirectMessageForwardRequest}.
      *

@@ -6,6 +6,7 @@ import MMTPMessageFormats.ProtocolMessage;
 import MMTPMessageFormats.SubjectCastApplicationMessage;
 import com.google.protobuf.ByteString;
 import com.mms.EdgeRouter.ConnectionManagement.IConnectionRepository;
+import com.mms.EdgeRouter.MessageRelay.Local.MessageTracker.IMessageTracker;
 import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectMessageForwardRequest;
 import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectMessageForwardRequest;
 import com.mms.EdgeRouter.SubscriptionManagement.ISubscriptionRepository;
@@ -31,6 +32,7 @@ public class LocalRelay implements ILocalRelay
 {
     private final IConnectionRepository connectionRepository;
     private final ISubscriptionRepository subscriptionRepository;
+    private final IMessageTracker messageTracker;
 
 
     /**
@@ -40,10 +42,11 @@ public class LocalRelay implements ILocalRelay
      * @param subscriptionRepository The subscription repository.
      */
     @Autowired
-    public LocalRelay(IConnectionRepository connectionRepository, ISubscriptionRepository subscriptionRepository)
+    public LocalRelay(IConnectionRepository connectionRepository, ISubscriptionRepository subscriptionRepository, IMessageTracker messageTracker)
     {
         this.connectionRepository = connectionRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.messageTracker = messageTracker;
     }
 
 
@@ -58,7 +61,7 @@ public class LocalRelay implements ILocalRelay
     public void onLocalForwardingRequest(LocalDirectMessageForwardRequest event)
     {
         DirectApplicationMessage message = event.getMessage();
-        log.info("Processing subject cast application message with ID: {}", message.getId());
+        log.info("Processing subject cast application message={}", message.getId());
         processDirectApplicationMessage(message);
     }
 
@@ -74,7 +77,7 @@ public class LocalRelay implements ILocalRelay
     public void onLocalForwardingRequest(LocalSubjectMessageForwardRequest event)
     {
         SubjectCastApplicationMessage message = event.getMessage();
-        log.info("Processing subject cast application message with ID: {}", message.getId());
+        log.info("Processing subject cast application message={}", message.getId());
         processSubjectCastApplicationMessage(message);
     }
 
@@ -89,8 +92,9 @@ public class LocalRelay implements ILocalRelay
     {
         List<String> recipients = message.getRecipientsList();
         List<String> agents = subscriptionRepository.getSubscribersByMrns(recipients);
+        agents.removeIf(agent -> messageTracker.checkRebound(message.getId(), agent) || messageTracker.checkDeliveryStatus(message.getId(), agent));
         List<WebSocketSession> sessions = connectionRepository.getSessions(agents);
-        serializeAndSend(message.toByteString(), MessageType.DIRECT_APPLICATION_MESSAGE, sessions);
+        serializeAndSend(message.toByteString(), MessageType.DIRECT_APPLICATION_MESSAGE, sessions, message.getId());
     }
 
 
@@ -105,7 +109,7 @@ public class LocalRelay implements ILocalRelay
         String subject = message.getSubject();
         List<String> agents = subscriptionRepository.getSubscribersBySubject(subject);
         List<WebSocketSession> sessions = connectionRepository.getSessions(agents);
-        serializeAndSend(message.toByteString(), MessageType.SUBJECT_CAST_APPLICATION_MESSAGE, sessions);
+        serializeAndSend(message.toByteString(), MessageType.SUBJECT_CAST_APPLICATION_MESSAGE, sessions, message.getId());
     }
 
 
@@ -118,11 +122,7 @@ public class LocalRelay implements ILocalRelay
      */
     protected ByteBuffer serializeMessage(ByteString message, MessageType messageType)
     {
-        ProtocolMessage protocolMessage = ProtocolMessage.newBuilder()
-                .setType(messageType)
-                .setContent(message)
-                .build();
-
+        ProtocolMessage protocolMessage = ProtocolMessage.newBuilder().setType(messageType).setContent(message).build();
         return ByteBuffer.wrap(protocolMessage.toByteArray());
     }
 
@@ -134,13 +134,22 @@ public class LocalRelay implements ILocalRelay
      * @param sessions The sessions to send the buffer to.
      */
     @Async("WorkerPool")
-    protected void send(ByteBuffer buffer, List<WebSocketSession> sessions)
+    protected void send(ByteBuffer buffer, List<WebSocketSession> sessions, String messageId)
     {
         for (WebSocketSession session : sessions)
         {
             if (session.isOpen())
             {
-                sendSocket(new BinaryMessage(buffer), session);
+                try
+                {
+                    sendSocket(new BinaryMessage(buffer), session);
+                    messageTracker.registerDelivery(session.getId(), messageId);
+                }
+
+                catch (IOException e)
+                {
+                    log.error("Error sending message={} to agent={}", messageId, session.getId(), e);
+                }
             }
         }
     }
@@ -153,20 +162,9 @@ public class LocalRelay implements ILocalRelay
      * @param socket  The socket to send the message to.
      */
     @Async("WorkerPool")
-    protected void sendSocket(BinaryMessage message, WebSocketSession socket)
+    protected void sendSocket(BinaryMessage message, WebSocketSession socket) throws IOException
     {
-        try
-        {
-            if (socket.isOpen())
-            {
-                socket.sendMessage(message);
-            }
-        }
-
-        catch (IOException ex)
-        {
-            log.error("Failed to send message to session: {}", socket.getId());
-        }
+        socket.sendMessage(message);
     }
 
 
@@ -178,9 +176,9 @@ public class LocalRelay implements ILocalRelay
      * @param sessions    The sessions to send the message to.
      */
     @Async("WorkerPool")
-    protected void serializeAndSend(ByteString message, MessageType messageType, List<WebSocketSession> sessions)
+    protected void serializeAndSend(ByteString message, MessageType messageType, List<WebSocketSession> sessions, String messageId)
     {
         ByteBuffer buffer = serializeMessage(message, messageType);
-        send(buffer, sessions);
+        send(buffer, sessions, messageId);
     }
 }

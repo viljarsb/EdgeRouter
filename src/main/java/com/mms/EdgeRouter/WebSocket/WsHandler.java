@@ -51,7 +51,7 @@ public class WsHandler extends AbstractWebSocketHandler
     {
         SessionEstablishedEvent event = new SessionEstablishedEvent(this, session);
         eventPublisher.publishEvent(event);
-        log.info("New WebSocket connection established: sessionId={}, remoteAddress={}.", session.getId(), session.getRemoteAddress());
+        log.info("New WebSocket connection established: session={}, remoteAddress={}.", session.getId(), session.getRemoteAddress());
     }
 
 
@@ -67,7 +67,7 @@ public class WsHandler extends AbstractWebSocketHandler
     {
         LocalMessageEvent event = new LocalMessageEvent(this, message.getPayload(), session.getId());
         eventPublisher.publishEvent(event);
-        log.debug("Received binary message from WebSocket connection: sessionId={}, messageSize={} bytes.", session.getId(), message.getPayload().limit());
+        log.debug("Received binary message from WebSocket connection: session={}, messageSize={} bytes.", session.getId(), message.getPayload().limit());
     }
 
 

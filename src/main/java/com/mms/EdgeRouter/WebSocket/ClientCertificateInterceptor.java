@@ -39,10 +39,15 @@ public class ClientCertificateInterceptor implements HandshakeInterceptor
             HttpServletRequest httpRequest = servletRequest.getServletRequest();
             X509Certificate[] certs = (X509Certificate[]) httpRequest.getAttribute("jakarta.servlet.request.X509Certificate");
 
-
             if (certs != null && certs.length > 0)
             {
                 attributes.put("MMS-CERTIFICATE", certs[0]);
+                log.info("Client certificate found in handshake request from IP={}", request.getRemoteAddress());
+            }
+
+            else
+            {
+                log.info("No client certificate found in handshake request from IP={}", request.getRemoteAddress());
             }
         }
         return true;

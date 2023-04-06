@@ -192,13 +192,13 @@ public class ConnectionRepository implements IConnectionRepository
 
             catch (IOException ex)
             {
-                log.error("Failed to close connection for agent: {}", agentID, ex);
+                log.error("Failed to close connection for agent={}", agentID, ex);
             }
         }
 
         else
         {
-            log.warn("Attempted to close non-existent connection for agent: {}", agentID);
+            log.warn("Attempted to close non-existent connection for agent={}", agentID);
         }
     }
 

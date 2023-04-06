@@ -38,7 +38,10 @@ public class mDNSConfiguration
     @Bean
     JmDNS mDNS() throws IOException
     {
+        log.info("Attempting to create JmDNS instance with address={}", address);
         InetAddress inetAddress = InetAddress.getByName(address);
-        return JmDNS.create(inetAddress);
+        JmDNS jmDNS = JmDNS.create(inetAddress);
+        log.info("Successfully JmDNS instance with address={}", address);
+        return jmDNS;
     }
 }

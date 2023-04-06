@@ -11,7 +11,6 @@ public class EdgeRouterApplication
 {
     public static void main(String[] args)
     {
-        log.info("Starting MMS Edge Router");
         SpringApplication.run(EdgeRouterApplication.class, args);
     }
 }

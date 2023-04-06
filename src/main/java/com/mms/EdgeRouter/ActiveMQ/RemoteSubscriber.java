@@ -17,7 +17,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class RemoteSubscriber
 {
-
     private final ConnectionFactory connectionFactory;
     private final RemoteReceiver activeMQReceiver;
 
@@ -26,8 +25,9 @@ public class RemoteSubscriber
 
     /**
      * Constructs a new {@link RemoteSubscriber} with the given ConnectionFactory and RemoteReceiver.
-     * @param connectionFactory
-     * @param activeMQReceiver
+     *
+     * @param connectionFactory The ConnectionFactory used to connect to the ActiveMQ broker.
+     * @param activeMQReceiver  The RemoteReceiver used to receive messages from the ActiveMQ broker.
      */
     @Autowired
     public RemoteSubscriber(@Qualifier("activeMQConnectionFactory") ConnectionFactory connectionFactory, RemoteReceiver activeMQReceiver)

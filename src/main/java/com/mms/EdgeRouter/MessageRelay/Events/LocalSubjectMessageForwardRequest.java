@@ -17,7 +17,6 @@ public final class LocalSubjectMessageForwardRequest extends ApplicationEvent
      * Constructs a new {@link LocalSubjectMessageForwardRequest}.
      *
      * @param source  The source of the event.
-     * @param message The SubjectCastApplicationMessage to forward.
      */
     public LocalSubjectMessageForwardRequest(Object source, SubjectCastApplicationMessage message)
     {

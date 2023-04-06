@@ -2,18 +2,16 @@ package com.mms.EdgeRouter.MessageHandlers.Local;
 
 import MMTPMessageFormats.*;
 import Misc.MMTPValidationException;
-import Protocols.MMTP.MessageFormats.*;
 import Misc.MMTPValidator;
-import Protocols.MessageFormats.*;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mms.EdgeRouter.ConnectionManagement.Events.ConnectionCloseRequest;
 import com.mms.EdgeRouter.ConnectionManagement.IConnectionRepository;
-import com.mms.EdgeRouter.MessageFormats.*;
 import com.mms.EdgeRouter.MessageHandlers.Events.*;
 import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectMessageForwardRequest;
 import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectMessageForwardRequest;
 import com.mms.EdgeRouter.MessageRelay.Events.RemoteDirectMessageForwardRequest;
 import com.mms.EdgeRouter.MessageRelay.Events.RemoteSubjectMessageForwardRequest;
+import com.mms.EdgeRouter.MessageRelay.Local.MessageTracker.IMessageTracker;
 import com.mms.EdgeRouter.SubscriptionManagement.Events.SubscriptionEventType;
 import com.mms.EdgeRouter.WebSocket.Events.LocalMessageEvent;
 import io.netty.handler.codec.http.websocketx.WebSocketCloseStatus;
@@ -40,6 +38,7 @@ public class LocalMessageHandler implements ILocalMessageHandler
 {
     private final IConnectionRepository connectionRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final IMessageTracker messageTracker;
 
 
     /**
@@ -47,12 +46,14 @@ public class LocalMessageHandler implements ILocalMessageHandler
      *
      * @param connectionRepository The connection repository to use.
      * @param eventPublisher       The event publisher to use.
+     * @param messageTracker       The message tracker to use.
      */
     @Autowired
-    public LocalMessageHandler(IConnectionRepository connectionRepository, ApplicationEventPublisher eventPublisher)
+    public LocalMessageHandler(IConnectionRepository connectionRepository, ApplicationEventPublisher eventPublisher, IMessageTracker messageTracker)
     {
         this.connectionRepository = connectionRepository;
         this.eventPublisher = eventPublisher;
+        this.messageTracker = messageTracker;
     }
 
 
@@ -96,13 +97,13 @@ public class LocalMessageHandler implements ILocalMessageHandler
 
         catch (InvalidProtocolBufferException ex)
         {
-            log.warn("Error parsing local message", ex);
+            log.warn("Error parsing local message from agent={}", agentID, ex);
             sendCloseRequest(agentID, WebSocketCloseStatus.PROTOCOL_ERROR.code(), "Client sent invalid message");
         }
 
         catch (MMTPValidationException ex)
         {
-            log.warn("Error validating local message", ex);
+            log.warn("Error validating local message from agent={}", agentID, ex);
             sendCloseRequest(agentID, WebSocketCloseStatus.PROTOCOL_ERROR.code(), "Client sent invalid message");
         }
     }
@@ -124,7 +125,7 @@ public class LocalMessageHandler implements ILocalMessageHandler
 
         if (MRN.isEmpty())
         {
-            log.warn("Received application message from unauthenticated agent {}, requesting closure of connection.", agentID);
+            log.warn("Received application message from unauthenticated agent={}, requesting closure of connection.", agentID);
             sendCloseRequest(agentID, WebSocketCloseStatus.POLICY_VIOLATION.code(), "Client sent application message before authentication");
             return;
         }
@@ -148,11 +149,12 @@ public class LocalMessageHandler implements ILocalMessageHandler
     @Async("WorkerPool")
     protected void processDirectApplicationMessage(ByteBuffer buffer, String agentID) throws InvalidProtocolBufferException, MMTPValidationException
     {
-        log.debug("Received direct application message from agent {}", agentID);
+        log.debug("Received direct application message from agent={}", agentID);
 
         DirectApplicationMessage applicationMessage = DirectApplicationMessage.parseFrom(buffer);
         MMTPValidator.validate(applicationMessage);
 
+        messageTracker.registerSent(applicationMessage.getId(), agentID);
         LocalDirectMessageForwardRequest localForwardRequest = new LocalDirectMessageForwardRequest(this, applicationMessage);
         RemoteDirectMessageForwardRequest remoteForwardingRequest = new RemoteDirectMessageForwardRequest(this, applicationMessage);
 
@@ -172,11 +174,12 @@ public class LocalMessageHandler implements ILocalMessageHandler
     @Async("WorkerPool")
     protected void processSubjectCastApplicationMessage(ByteBuffer buffer, String agentID) throws MMTPValidationException, InvalidProtocolBufferException
     {
-        log.debug("Received subject cast application message from agent {}", agentID);
+        log.debug("Received subject cast application message from agent={}", agentID);
 
         SubjectCastApplicationMessage applicationMessage = SubjectCastApplicationMessage.parseFrom(buffer);
         MMTPValidator.validate(applicationMessage);
 
+        messageTracker.registerSent(applicationMessage.getId(), agentID);
         LocalSubjectMessageForwardRequest localForwardRequest = new LocalSubjectMessageForwardRequest(this, applicationMessage);
         RemoteSubjectMessageForwardRequest remoteForwardingRequest = new RemoteSubjectMessageForwardRequest(this, applicationMessage);
 
@@ -216,7 +219,7 @@ public class LocalMessageHandler implements ILocalMessageHandler
     @Async("WorkerPool")
     protected void processRegisterMessage(ByteBuffer buffer, String agentID) throws InvalidProtocolBufferException, MMTPValidationException
     {
-        log.debug("Received registration message from agent {}", agentID);
+        log.debug("Received registration message from agent={}", agentID);
 
         Register register = Register.parseFrom(buffer);
         MMTPValidator.validate(register);
@@ -248,7 +251,7 @@ public class LocalMessageHandler implements ILocalMessageHandler
     @Async("WorkerPool")
     protected void processUnregisterMessage(ByteBuffer buffer, String agentID) throws InvalidProtocolBufferException, MMTPValidationException
     {
-        log.debug("Received unregistration message from agent {}", agentID);
+        log.debug("Received unregistration message from agent={}", agentID);
 
         Register register = Register.parseFrom(buffer);
         MMTPValidator.validate(register);

@@ -80,7 +80,7 @@ public class SubscriptionRepository implements ISubscriptionRepository
         String agentId = event.getAgentID();
         Optional<String> mrnOptional = event.getMRN();
         onConnectionAdded(agentId, mrnOptional);
-        log.debug("SubscriptionRepository: handleConnectionAdded: agentId={} mrn={}", agentId, mrnOptional.orElse(null));
+        log.debug("SubscriptionRepository: handleConnectionAdded: agent={} mrn={}", agentId, mrnOptional.orElse(null));
     }
 
 
@@ -98,7 +98,7 @@ public class SubscriptionRepository implements ISubscriptionRepository
         String agentId = event.getAgentID();
         Optional<String> mrnOptional = event.getMRN();
         onConnectionRemoved(agentId, mrnOptional);
-        log.debug("SubscriptionRepository: handleConnectionRemoved: agentId={}, mrn={}", agentId, mrnOptional.orElse(null));
+        log.debug("SubscriptionRepository: handleConnectionRemoved: agent={}, mrn={}", agentId, mrnOptional.orElse(null));
     }
 
 
@@ -124,7 +124,7 @@ public class SubscriptionRepository implements ISubscriptionRepository
             unsubscribeFromSubjects(subjects, agentId);
         }
 
-        log.debug("SubscriptionRepository: handleSubjectSubscribeRequest: agentId={} type={} subjects={}", agentId, event.getType(), subjects);
+        log.debug("SubscriptionRepository: handleSubjectSubscribeRequest: agent={}, type={}, subjects={}", agentId, event.getType(), subjects);
     }
 
 
@@ -149,7 +149,7 @@ public class SubscriptionRepository implements ISubscriptionRepository
             unsubscribeFromMrn(agentId);
         }
 
-        log.debug("SubscriptionRepository: handleMrnSubscribeRequest: agentId={} type={}", agentId, event.getType());
+        log.debug("SubscriptionRepository: handleMrnSubscribeRequest: agent={} type={}", agentId, event.getType());
     }
 
 

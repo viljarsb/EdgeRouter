@@ -51,7 +51,7 @@ public class RemoteRelay
     public void onRemoteForwardRequestDirected(RemoteDirectMessageForwardRequest event)
     {
         DirectApplicationMessage message = event.getMessage();
-        log.info("Processing direct application message with ID: {}", message.getId());
+        log.info("Processing direct application message={}", message.getId());
         List<String> destinations = event.getRecipients();
         serializeAndSend(MessageType.DIRECT_APPLICATION_MESSAGE, message.toByteString(), destinations);
     }
@@ -67,7 +67,7 @@ public class RemoteRelay
     public void onRemoteForwardRequestSubjectCast(RemoteSubjectMessageForwardRequest event)
     {
         SubjectCastApplicationMessage message = event.getMessage();
-        log.info("Processing subject cast application message with ID: {}", message.getId());
+        log.info("Processing subject cast application message={}", message.getId());
         String subject = event.getSubject();
         serializeAndSend(MessageType.SUBJECT_CAST_APPLICATION_MESSAGE, message.toByteString(), List.of(subject));
     }
@@ -124,6 +124,7 @@ public class RemoteRelay
 
         for (String destination : destinations)
         {
+            log.info("Sending message to destination={}", destination);
             sendBytes(destination, buffer);
         }
     }

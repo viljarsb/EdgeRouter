@@ -37,7 +37,7 @@ public class WebsocketConfigurator implements WebSocketConfigurer
     /**
      * Constructs a new `{@link WebsocketConfigurator}` with the given `{@link WsHandler}`.
      *
-     * @param WsHandler The `WsHandler` responsible for managing WebSocket connections.
+     * @param wsHandler The `WsHandler` responsible for managing WebSocket connections.
      */
     @Autowired
     public WebsocketConfigurator(RateLimiterWsHandler wsHandler)
