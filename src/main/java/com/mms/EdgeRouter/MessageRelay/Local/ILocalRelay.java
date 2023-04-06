@@ -1,10 +1,14 @@
 package com.mms.EdgeRouter.MessageRelay.Local;
 
-import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectForwardRequest;
-import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectForwardRequest;
+import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectMessageForwardRequest;
+import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectMessageForwardRequest;
 
+/**
+ * An interface for classes that handle local message forwarding requests.
+ */
 public interface ILocalRelay
 {
-    void onLocalForwardingRequest(LocalDirectForwardRequest event);
-    void onLocalForwardingRequest(LocalSubjectForwardRequest event);
+    void onLocalForwardingRequest(LocalDirectMessageForwardRequest event);
+
+    void onLocalForwardingRequest(LocalSubjectMessageForwardRequest event);
 }

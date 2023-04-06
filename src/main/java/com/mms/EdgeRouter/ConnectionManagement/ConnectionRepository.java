@@ -1,5 +1,8 @@
 package com.mms.EdgeRouter.ConnectionManagement;
 
+import com.mms.EdgeRouter.ConnectionManagement.ClientContext.AnonymousClientContext;
+import com.mms.EdgeRouter.ConnectionManagement.ClientContext.AuthenticatedClientContext;
+import com.mms.EdgeRouter.ConnectionManagement.ClientContext.ClientConnectionContext;
 import com.mms.EdgeRouter.ConnectionManagement.Events.ConnectionAddedEvent;
 import com.mms.EdgeRouter.ConnectionManagement.Events.ConnectionCloseRequest;
 import com.mms.EdgeRouter.ConnectionManagement.Events.ConnectionRemovedEvent;
@@ -8,6 +11,7 @@ import com.mms.EdgeRouter.WebSocket.Events.SessionTerminatedEvent;
 import jakarta.annotation.PreDestroy;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import net.maritimeconnectivity.pki.CertificateHandler;
 import net.maritimeconnectivity.pki.PKIIdentity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -19,6 +23,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 
 import java.io.IOException;
+import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ConnectionRepository implements IConnectionRepository
 {
     private final ApplicationEventPublisher eventPublisher;
-    private final Map<String, ClientConnectionContext> connections = new ConcurrentHashMap<>();
+    private final Map<String, ClientConnectionContext> contexts = new ConcurrentHashMap<>();
 
 
     @Autowired
@@ -49,9 +54,9 @@ public class ConnectionRepository implements IConnectionRepository
     /**
      * Asynchronously handles the event when a WebSocket session is established.
      * Adds the new connection to the map of active connections.
-     * Publishes a ConnectionAddedEvent to notify listeners of the new connection.
+     * Publishes a {@link ConnectionAddedEvent} to notify listeners of the new connection.
      *
-     * @param event The SessionEstablishedEvent.
+     * @param event The {@link SessionEstablishedEvent}.
      */
     @Async("ConnectionPool")
     @EventListener
@@ -65,9 +70,9 @@ public class ConnectionRepository implements IConnectionRepository
     /**
      * Asynchronously handles the event when a WebSocket session is terminated.
      * Removes the terminated connection from the map of active connections.
-     * Publishes a ConnectionRemovedEvent to notify listeners of the terminated connection.
+     * Publishes a {@link ConnectionRemovedEvent} to notify listeners of the terminated connection.
      *
-     * @param event The SessionTerminatedEvent.
+     * @param event The {@link SessionTerminatedEvent}.
      */
     @Async("ConnectionPool")
     @EventListener
@@ -79,9 +84,11 @@ public class ConnectionRepository implements IConnectionRepository
 
 
     /**
-     * Asynchronously handles a ConnectionCloseRequest event by extracting the agentID, closeCode, and closeReason from the request and passing them to the closeConnection() method to close the WebSocket connection with the given agentID using the specified closeCode and closeReason.
+     * Asynchronously handles a {@link ConnectionCloseRequest} event by extracting the agentID, closeCode, and closeReason
+     * from the request and passing them to the {@link #closeConnection(String, int, String)} method to close the WebSocket connection
+     * with the given agentID using the specified closeCode and closeReason.
      *
-     * @param request The ConnectionCloseRequest object containing information about the WebSocket connection to be closed.
+     * @param request The {@link ConnectionCloseRequest} object containing information about the WebSocket connection to be closed.
      */
     @Async("ConnectionPool")
     @EventListener
@@ -89,61 +96,79 @@ public class ConnectionRepository implements IConnectionRepository
     {
         String agentID = request.getAgentID();
         int closeCode = request.getCloseCode();
-        String closeReason = request.getCloseReason();
+        String closeReason = request.getClosePhrase();
         closeConnection(agentID, closeCode, closeReason);
     }
 
 
     /**
+     * Called in response to a {@link SessionEstablishedEvent}.
      * Asynchronously adds a new connection to the map of active connections.
-     * If the connection is authenticated, logs information about the authenticated agent.
-     * Publishes a ConnectionAddedEvent to notify listeners of the new connection.
+     * Publishes a {@link ConnectionAddedEvent} to notify listeners of the new connection.
      *
-     * @param session The WebSocketSession to add.
+     * @param session The {@link WebSocketSession} that has been established.
      */
     @Async("ConnectionPool")
     protected void addConnection(@NonNull WebSocketSession session)
     {
-        ClientConnectionContext context = new ClientConnectionContext(session);
-        connections.put(session.getId(), context);
+        X509Certificate certificate = (X509Certificate) session.getAttributes().get("MMS-CERTIFICATE");
 
-        if (context.getIdentity() != null)
+        if (certificate != null)
         {
-            log.info("Authenticated agent added: agentId={}, commonName={}, mrn={}", context.getAgentID(), context.getIdentity().getCn(), context.getIdentity().getMrn());
+            PKIIdentity identity = CertificateHandler.getIdentityFromCert(certificate);
+            log.info("Authenticated agent added: agent={}, commonName={}, mrn={}", session.getId(), identity.getCn(), identity.getMrn());
+            AuthenticatedClientContext context = new AuthenticatedClientContext(session, identity.getMrn());
+            contexts.put(session.getId(), context);
+
+            ConnectionAddedEvent connectionAddedEvent = new ConnectionAddedEvent(this, context.getAgentID(), context.getMRN());
+            eventPublisher.publishEvent(connectionAddedEvent);
         }
+
         else
         {
-            log.info("Unauthenticated agent added: agentId={}", context.getAgentID());
-        }
+            log.info("Unauthenticated agent added: agent={}", session.getId());
+            AnonymousClientContext context = new AnonymousClientContext(session);
+            contexts.put(session.getId(), context);
 
-        ConnectionAddedEvent connectionAddedEvent = new ConnectionAddedEvent(this, context.getAgentID(), context.getIdentity());
-        eventPublisher.publishEvent(connectionAddedEvent);
+            ConnectionAddedEvent connectionAddedEvent = new ConnectionAddedEvent(this, context.getAgentID());
+            eventPublisher.publishEvent(connectionAddedEvent);
+        }
     }
 
 
     /**
-     * Asynchronously removes a connection from the map of active connections.
-     * If the connection was successfully removed, logs information about the terminated connection.
-     * Publishes a ConnectionRemovedEvent to notify listeners of the terminated connection.
+     * Called in response to a {@link SessionTerminatedEvent}.
+     * Asynchronously removes the terminated connection from the map of active connections.
+     * Publishes a {@link ConnectionRemovedEvent} to notify listeners of the terminated connection.
      *
-     * @param session The WebSocketSession to remove.
+     * @param session The {@link WebSocketSession} to remove.
      */
     @Async("ConnectionPool")
     protected void removeConnection(@NonNull WebSocketSession session)
     {
-        ClientConnectionContext context = connections.remove(session.getId());
+        ClientConnectionContext context = contexts.remove(session.getId());
+
         if (context != null)
         {
-            log.info("Connection removed: agentId={}", context.getAgentID());
-            ConnectionRemovedEvent connectionRemovedEvent = new ConnectionRemovedEvent(this, context.getAgentID(), context.getIdentity());
-            eventPublisher.publishEvent(connectionRemovedEvent);
+            if (context instanceof AuthenticatedClientContext authenticatedContext)
+            {
+                log.info("Authenticated agent removed: agent={}, mrn={}", authenticatedContext.getAgentID(), authenticatedContext.getMRN());
+                ConnectionRemovedEvent connectionRemovedEvent = new ConnectionRemovedEvent(this, authenticatedContext.getAgentID(), authenticatedContext.getMRN());
+                eventPublisher.publishEvent(connectionRemovedEvent);
+            }
+
+            else if (context instanceof AnonymousClientContext anonymousContext)
+            {
+                log.info("Unauthenticated agent removed: agent={}", anonymousContext.getAgentID());
+                ConnectionRemovedEvent connectionRemovedEvent = new ConnectionRemovedEvent(this, anonymousContext.getAgentID());
+                eventPublisher.publishEvent(connectionRemovedEvent);
+            }
         }
     }
 
 
     /**
      * Asynchronously closes a WebSocket connection with a given agent ID.
-     * If the connection is successfully closed, logs information about the closed connection.
      *
      * @param agentID    The ID of the agent whose connection to close.
      * @param statusCode The status code to send when closing the connection.
@@ -152,14 +177,16 @@ public class ConnectionRepository implements IConnectionRepository
     @Async("ConnectionPool")
     protected void closeConnection(@NonNull String agentID, int statusCode, @NonNull String reason)
     {
-        ClientConnectionContext context = connections.remove(agentID);
+        ClientConnectionContext context = contexts.remove(agentID);
+
         if (context != null)
         {
             CloseStatus closeStatus = new CloseStatus(statusCode, reason);
 
             try
             {
-                context.getSession().close(closeStatus);
+                WebSocketSession session = context.getSession();
+                session.close(closeStatus);
                 log.info("Connection closed: agent={}, statusCode={}, reason={}", agentID, statusCode, reason);
             }
 
@@ -178,37 +205,34 @@ public class ConnectionRepository implements IConnectionRepository
 
     /**
      * Asynchronously closes all WebSocket connections.
-     * Logs information about the number of connections closed.
      *
      * @param statusCode The status code to send when closing the connections.
-     * @param reason     The reason to send when closing the connections.
      */
     @Async("ConnectionPool")
-    protected void closeAllConnections(int statusCode, String reason)
+    protected void closeAllConnections(int statusCode)
     {
-        log.info("Closing all connections: statusCode={}, reason={}", statusCode, reason);
-        for (Map.Entry<String, ClientConnectionContext> entry : connections.entrySet())
+        log.info("Closing all connections: statusCode={}, reason={}", statusCode, "Edge Router is shutting down");
+        for (Map.Entry<String,ClientConnectionContext> entry : contexts.entrySet())
         {
-            closeConnection(entry.getKey(), statusCode, reason);
+            closeConnection(entry.getKey(), statusCode, "Edge Router is shutting down");
         }
     }
 
 
     /**
-     * Returns the PKIIdentity associated with a given agent ID, if any.
+     * Returns the Maritime Resource Name associated with a given agent ID, if any.
      *
-     * @param agentID The ID of the agent to get the PKIIdentity for.
-     * @return An Optional containing the PKIIdentity, if one is associated with the agent ID.
+     * @param agentID The ID of the agent to get the MRN for.
+     * @return An Optional containing the MRN, if one is associated with the agent ID.
      */
     @Override
-    public Optional<PKIIdentity> getIdentity(@NonNull String agentID)
+    public Optional<String> getMRN(@NonNull String agentID)
     {
-        ClientConnectionContext context = connections.get(agentID);
-        PKIIdentity identity = context.getIdentity();
+        ClientConnectionContext context = contexts.get(agentID);
 
-        if (identity != null)
+        if (context instanceof AuthenticatedClientContext authenticatedContext)
         {
-            return Optional.of(identity);
+            return Optional.of(authenticatedContext.getMRN());
         }
 
         return Optional.empty();
@@ -216,16 +240,15 @@ public class ConnectionRepository implements IConnectionRepository
 
 
     /**
-     * Returns the WebSocketSession associated with a given agent ID, if any.
+     * Returns the WebSocket session associated with a given agent ID, if any.
      *
-     * @param agentID The ID of the agent to get the WebSocketSession for.
-     * @return An Optional containing the WebSocketSession, if one is associated with the agent ID.
+     * @param agentID The ID of the agent to get the {@link WebSocketSession} for.
+     * @return An Optional containing the {@link WebSocketSession}, if one is associated with the agent ID.
      */
-
     @Override
     public Optional<WebSocketSession> getSession(@NonNull String agentID)
     {
-        ClientConnectionContext context = connections.get(agentID);
+        ClientConnectionContext context = contexts.get(agentID);
 
         if (context != null)
         {
@@ -237,10 +260,10 @@ public class ConnectionRepository implements IConnectionRepository
 
 
     /**
-     * Returns a list of WebSocketSessions associated with the given list of agent IDs.
+     * Returns a list of WebSocket sessions associated with the given list of agent IDs.
      *
      * @param agentIDs The list of agent IDs to get the WebSocketSessions for.
-     * @return A list of WebSocketSessions associated with the given list of agent IDs.
+     * @return A list of {@link WebSocketSession} objects associated with the given list of agent IDs.
      */
     @Override
     public List<WebSocketSession> getSessions(@NonNull List<String> agentIDs)
@@ -257,7 +280,7 @@ public class ConnectionRepository implements IConnectionRepository
     @Override
     public int getConnectionCount()
     {
-        return connections.size();
+        return contexts.size();
     }
 
 
@@ -269,7 +292,7 @@ public class ConnectionRepository implements IConnectionRepository
     @Override
     public List<ClientConnectionContext> getAllConnections()
     {
-        return List.copyOf(connections.values());
+        return List.copyOf(contexts.values());
     }
 
 
@@ -279,6 +302,6 @@ public class ConnectionRepository implements IConnectionRepository
     @PreDestroy
     public void destroy()
     {
-        closeAllConnections(CloseStatus.GOING_AWAY.getCode(), "Edge Router is shutting down");
+        closeAllConnections(CloseStatus.GOING_AWAY.getCode());
     }
 }

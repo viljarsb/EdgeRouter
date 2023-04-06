@@ -9,7 +9,7 @@ public class ConnectionCloseRequest extends ApplicationEvent
 {
     private final String agentID;
     private final int closeCode;
-    private final String closeReason;
+    private final String closePhrase;
 
 
     /**
@@ -25,7 +25,7 @@ public class ConnectionCloseRequest extends ApplicationEvent
         super(source);
         this.agentID = agentID;
         this.closeCode = closeCode;
-        this.closeReason = closeReason;
+        this.closePhrase = closeReason;
     }
 
 
@@ -56,8 +56,8 @@ public class ConnectionCloseRequest extends ApplicationEvent
      *
      * @return The reason to send when closing the connection.
      */
-    public String getCloseReason()
+    public String getClosePhrase()
     {
-        return closeReason;
+        return closePhrase;
     }
 }

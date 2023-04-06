@@ -28,6 +28,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * RateLimiterWsHandler is a Spring WebSocket handler decorator that provides rate limiting functionality.
  * It limits the number of concurrent WebSocket connections, the rate of incoming binary messages, and blocks IPs that
  * exceed the limits. It also logs more details about rate limiting and errors.
+ * <p>
+ * extends the {@link WebSocketHandlerDecorator} class to provide rate limiting functionality to the underlying WebSocket handler.
+ * In essence its a handler that wraps another handler, to encapsulate the rate limiting functionality and abstract it away from the
+ * underlying handler, so that the underlying handler can focus on its own business logic.
  */
 @Slf4j
 @Component
@@ -38,16 +42,14 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
     private final Cache<String, AtomicInteger> connectionAttempts;
     private final Cache<String, Boolean> blockedIPs;
 
-    private final long maxConnectionsPerSecond;
     private final long maxBytesPerSecond;
     private final long maxConcurrentConnections;
-    private final long blacklistTime;
 
     private final TaskExecutor workerPool;
 
 
     /**
-     * Constructor for RateLimiterWsHandler.
+     * Constructs a new {@link RateLimiterWsHandler}.
      *
      * @param delegate                 the original WebSocket handler
      * @param workerPool               the thread pool used to process incoming messages
@@ -57,40 +59,28 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
      * @param blacklistTime            the duration in minutes to blacklist an IP
      */
     @Autowired
-    public RateLimiterWsHandler(WsHandler delegate,
-                                @Qualifier("WorkerPool") TaskExecutor workerPool,
-                                @Value("${edgerouter.maxConnectionsPerSecond:10000}") long maxConnectionsPerSecond,
-                                @Value("${edgerouter.maxBytesPerSecond:100000}") long maxBytesPerSecond,
-                                @Value("${edgerouter.maxConcurrentConnections:10000}") long maxConcurrentConnections,
-                                @Value("${edgerouter.blacklistTime:10000}") long blacklistTime)
+    public RateLimiterWsHandler(WsHandler delegate, @Qualifier("WorkerPool") TaskExecutor workerPool, @Value("${edgerouter.maxConnectionsPerSecond:10000}") long maxConnectionsPerSecond, @Value("${edgerouter.maxBytesPerSecond:100000}") long maxBytesPerSecond, @Value("${edgerouter.maxConcurrentConnections:10000}") long maxConcurrentConnections, @Value("${edgerouter.blacklistTime:10000}") long blacklistTime)
     {
         super(delegate);
         this.workerPool = workerPool;
-        this.maxConnectionsPerSecond = maxConnectionsPerSecond;
         this.maxBytesPerSecond = maxBytesPerSecond;
         this.maxConcurrentConnections = maxConcurrentConnections;
-        this.blacklistTime = blacklistTime;
 
         Bandwidth bandwidth = Bandwidth.simple(maxConnectionsPerSecond, Duration.ofSeconds(1));
         this.connectionsBucket = Bucket.builder().addLimit(bandwidth).build();
         this.messageRateLimiters = new ConcurrentHashMap<>();
 
-        this.blockedIPs = CacheBuilder.newBuilder()
-                .expireAfterWrite(blacklistTime, TimeUnit.MINUTES)
-                .build();
+        this.blockedIPs = CacheBuilder.newBuilder().expireAfterWrite(blacklistTime, TimeUnit.MINUTES).build();
 
-        this.connectionAttempts = CacheBuilder.newBuilder()
-                .expireAfterWrite(blacklistTime, TimeUnit.MINUTES)
-                .build();
+        this.connectionAttempts = CacheBuilder.newBuilder().expireAfterWrite(blacklistTime, TimeUnit.MINUTES).build();
 
 
-        log.info("RateLimiterWsHandler initialized with maxConnectionsPerSecond: {}, maxBytesPerSecond: {}, maxConcurrentConnections: {}, blacklistTime: {}",
-                maxConnectionsPerSecond, maxBytesPerSecond, maxConcurrentConnections, blacklistTime);
+        log.info("RateLimiterWsHandler initialized with maxConnectionsPerSecond: {}, maxBytesPerSecond: {}, maxConcurrentConnections: {}, blacklistTime: {}", maxConnectionsPerSecond, maxBytesPerSecond, maxConcurrentConnections, blacklistTime);
     }
 
 
     /**
-     * Handles a new WebSocket connection. Performs rate limiting checks and denies or accepts the connection
+     * Handles a new {@link WebSocketSession} connection. Performs rate limiting checks and denies or accepts the connection
      * accordingly. Adds a message rate limiter to the session if the connection is accepted.
      *
      * @param session The WebSocket session object.
@@ -133,7 +123,7 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
 
 
     /**
-     * Handles a closed WebSocket connection. Removes the message rate limiter associated with the session.
+     * Handles a closed {@link WebSocketSession} connection. Removes the message rate limiter associated with the session.
      *
      * @param session The WebSocket session object.
      * @param status  The close status.
@@ -155,7 +145,7 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
 
 
     /**
-     * Handles a WebSocket message. Only binary messages are accepted. Applies rate limiting checks to the message and
+     * Handles a {@link WebSocketMessage}. Only binary messages are accepted. Applies rate limiting checks to the message and
      * executes the decorated WebSocket handler if the checks pass.
      *
      * @param session The WebSocket session object.
@@ -186,7 +176,7 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
 
 
     /**
-     * Applies rate limiting checks to a binary WebSocket message. Uses a bucket to enforce the maximum byte rate limit
+     * Applies rate limiting checks to a binary {@link BinaryMessage} message. Uses a bucket to enforce the maximum byte rate limit
      * and delays message processing if necessary.
      *
      * @param message The binary WebSocket message object.
@@ -209,7 +199,7 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
 
 
     /**
-     * Applies rate limiting checks to a binary WebSocket message, and delays processing if necessary.
+     * Applies rate limiting checks to a {@link BinaryMessage}, and delays processing if necessary.
      *
      * @param message           The binary WebSocket message object.
      * @param session           The WebSocket session object.
@@ -231,13 +221,12 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
         long waitTimeMillis = consumptionProbe.getNanosToWaitForRefill() / 1_000_000;
         log.debug("No tokens available for session: {}, waiting {}ms", session.getId(), waitTimeMillis);
 
-        CompletableFuture.delayedExecutor(waitTimeMillis, TimeUnit.MILLISECONDS, workerPool)
-                .execute(() -> applyRateLimitWithDelayAndHandleExceptions(message, session, rateLimiterBucket, payloadSize));
+        CompletableFuture.delayedExecutor(waitTimeMillis, TimeUnit.MILLISECONDS, workerPool).execute(() -> applyRateLimitWithDelayAndHandleExceptions(message, session, rateLimiterBucket, payloadSize));
     }
 
 
     /**
-     * Applies rate limiting checks to a binary WebSocket message, delays message processing if necessary, and handles
+     * Applies rate limiting checks to a binary {@link BinaryMessage}, delays message processing if necessary, and handles
      * any exceptions that occur while processing the message.
      *
      * @param message           The binary WebSocket message object.
@@ -245,7 +234,8 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
      * @param rateLimiterBucket The rate limiter bucket to use for checking message rates.
      * @param payloadSize       The size of the message payload in bytes.
      */
-    private void applyRateLimitWithDelayAndHandleExceptions(@NonNull BinaryMessage message, @NonNull WebSocketSession session, @NonNull Bucket rateLimiterBucket, long payloadSize)
+    @Async("WorkerPool")
+    protected void applyRateLimitWithDelayAndHandleExceptions(@NonNull BinaryMessage message, @NonNull WebSocketSession session, @NonNull Bucket rateLimiterBucket, long payloadSize)
     {
         try
         {
@@ -263,7 +253,8 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
      *
      * @param ip The IP address to block.
      */
-    private void blockIP(@NonNull String ip)
+    @Async("WorkerPool")
+    protected void blockIP(@NonNull String ip)
     {
         blockedIPs.put(ip, true);
     }
@@ -282,13 +273,14 @@ public class RateLimiterWsHandler extends WebSocketHandlerDecorator
 
 
     /**
-     * Closes a WebSocket session with a given close code and reason.
+     * Closes a {@link WebSocketSession} connection with a given close code and reason.
      *
      * @param session The WebSocket session to close.
      * @param code    The close code to use.
      * @param reason  The close reason.
      */
-    private void denyConnection(@NonNull WebSocketSession session, int code, @NonNull String reason)
+    @Async("ConnectionPool")
+    protected void denyConnection(@NonNull WebSocketSession session, int code, @NonNull String reason)
     {
         try
         {

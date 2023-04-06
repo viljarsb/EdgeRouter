@@ -1,7 +1,6 @@
 package com.mms.EdgeRouter.ConnectionManagement;
 
-
-import net.maritimeconnectivity.pki.PKIIdentity;
+import com.mms.EdgeRouter.ConnectionManagement.ClientContext.ClientConnectionContext;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.util.List;
@@ -12,9 +11,13 @@ import java.util.Optional;
  */
 public interface IConnectionRepository
 {
-    Optional<PKIIdentity> getIdentity(String agentID);
+    Optional<String> getMRN(String agentID);
+
     Optional<WebSocketSession> getSession(String agentID);
+
     List<WebSocketSession> getSessions(List<String> agentIDs);
+
     int getConnectionCount();
+
     List<ClientConnectionContext> getAllConnections();
 }

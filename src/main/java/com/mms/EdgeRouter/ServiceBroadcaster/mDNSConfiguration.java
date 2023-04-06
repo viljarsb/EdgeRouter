@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Configuration;
 import javax.jmdns.JmDNS;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 
 /**
@@ -24,9 +23,9 @@ public class mDNSConfiguration
     private String serviceName;
     @Value("${edgerouter.path:/ws}")
     private String path;
-    @Value("${server.port}")
+    @Value("${server.port:8080}")
     private int port;
-    @Value("${server.address}")
+    @Value("${server.address:0.0.0.0}")
     private String address;
 
 
@@ -35,10 +34,9 @@ public class mDNSConfiguration
      *
      * @return A new instance of the JmDNS class with the server's address.
      * @throws IOException          If an I/O error occurs while creating the JmDNS instance.
-     * @throws InterruptedException If the thread is interrupted while waiting for the JmDNS instance to initialize.
      */
     @Bean
-    JmDNS mDNS() throws IOException, InterruptedException
+    JmDNS mDNS() throws IOException
     {
         InetAddress inetAddress = InetAddress.getByName(address);
         return JmDNS.create(inetAddress);

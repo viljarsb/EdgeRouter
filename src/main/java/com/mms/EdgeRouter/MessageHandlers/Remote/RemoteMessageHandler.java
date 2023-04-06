@@ -1,4 +1,4 @@
-package com.mms.EdgeRouter.MessageHandler.Remote;
+package com.mms.EdgeRouter.MessageHandlers.Remote;
 
 import Protocols.MMTP.Exceptions.MMTPValidationException;
 import Protocols.MMTP.MessageFormats.DirectApplicationMessage;
@@ -7,8 +7,8 @@ import Protocols.MMTP.MessageFormats.ProtocolMessage;
 import Protocols.MMTP.MessageFormats.SubjectCastApplicationMessage;
 import Protocols.MMTP.Validators.MMTPValidator;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectForwardRequest;
-import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectForwardRequest;
+import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectMessageForwardRequest;
+import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectMessageForwardRequest;
 import com.mms.EdgeRouter.ActiveMQ.events.RemoteMessageEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 
 /**
  * Service responsible for handling remote messages received from other brokers.
+ * Implements {@link IRemoteMessageHandler} to handle {@link RemoteMessageEvent}s.
  */
 @Service
 @Slf4j
@@ -31,7 +32,7 @@ public class RemoteMessageHandler implements IRemoteMessageHandler
 
 
     /**
-     * Constructs a new RemoteMessageHandler with the given dependencies.
+     * Constructs a new {@link RemoteMessageHandler} with the given dependencies.
      *
      * @param eventPublisher The event publisher to use.
      */
@@ -43,7 +44,7 @@ public class RemoteMessageHandler implements IRemoteMessageHandler
 
 
     /**
-     * Asynchronously handles a RemoteMessageEvent.
+     * Asynchronously handles a {@link RemoteMessageEvent}.
      *
      * @param event The RemoteMessageEvent to handle.
      */
@@ -90,7 +91,7 @@ public class RemoteMessageHandler implements IRemoteMessageHandler
 
 
     /**
-     * Processes a direct application message by validating it and publishing a LocalDirectForwardRequest event.
+     * Processes a direct application message by validating it and publishing a {@link LocalDirectMessageForwardRequest} event.
      *
      * @param buffer The buffer containing the direct application message.
      * @throws InvalidProtocolBufferException If the application message could not be parsed.
@@ -103,13 +104,13 @@ public class RemoteMessageHandler implements IRemoteMessageHandler
         DirectApplicationMessage applicationMessage = DirectApplicationMessage.parseFrom(buffer);
         MMTPValidator.validate(applicationMessage);
 
-        LocalDirectForwardRequest forwardRequest = new LocalDirectForwardRequest(this, applicationMessage);
+        LocalDirectMessageForwardRequest forwardRequest = new LocalDirectMessageForwardRequest(this, applicationMessage);
         eventPublisher.publishEvent(forwardRequest);
     }
 
 
     /**
-     * Processes a subject cast application message by validating it and publishing a LocalSubjectForwardRequest event.
+     * Processes a subject cast application message by validating it and publishing a {@link LocalSubjectMessageForwardRequest} event.
      *
      * @param buffer The buffer containing the subject cast application message.
      * @throws InvalidProtocolBufferException If the application message could not be parsed.
@@ -122,7 +123,7 @@ public class RemoteMessageHandler implements IRemoteMessageHandler
         SubjectCastApplicationMessage applicationMessage = SubjectCastApplicationMessage.parseFrom(buffer);
         MMTPValidator.validate(applicationMessage);
 
-        LocalSubjectForwardRequest forwardRequest = new LocalSubjectForwardRequest(this, applicationMessage);
+        LocalSubjectMessageForwardRequest forwardRequest = new LocalSubjectMessageForwardRequest(this, applicationMessage);
         eventPublisher.publishEvent(forwardRequest);
     }
 }

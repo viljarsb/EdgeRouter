@@ -1,4 +1,4 @@
-package com.mms.EdgeRouter.AsyncTaskManagement;
+package com.mms.EdgeRouter.AsyncPoolConfigurations;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +13,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * The WorkerPoolConfiguration class configures the thread pool used for handling any async tasks.
+ * It creates a TaskExecutor bean named "WorkerPool" with the specified core pool size, max pool size, keep-alive
+ * time, and queue capacity, as specified by the config. If no values are given, default values are used.
+ */
 @Slf4j
 @EnableAsync(proxyTargetClass = true)
 @Configuration
@@ -29,6 +34,7 @@ public class WorkerPoolConfiguration
 
     @Value("${worker-pool.queue-capacity:1000}")
     private int queueCapacity;
+
 
     @Bean(name = "WorkerPool") // Give the bean a name so that Spring knows which TaskExecutor to use
     public TaskExecutor workerPoolExecutor()

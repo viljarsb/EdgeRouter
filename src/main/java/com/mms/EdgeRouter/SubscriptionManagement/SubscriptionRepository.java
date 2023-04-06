@@ -4,8 +4,8 @@ import com.mms.EdgeRouter.ConnectionManagement.Events.ConnectionAddedEvent;
 import com.mms.EdgeRouter.ConnectionManagement.Events.ConnectionCloseRequest;
 import com.mms.EdgeRouter.ConnectionManagement.Events.ConnectionRemovedEvent;
 import com.mms.EdgeRouter.ConnectionManagement.IConnectionRepository;
-import com.mms.EdgeRouter.MessageHandler.Events.SubscriptionMrnRequest;
-import com.mms.EdgeRouter.MessageHandler.Events.SubscriptionSubjectRequest;
+import com.mms.EdgeRouter.MessageHandlers.Events.MrnSubscriptionRequestEvent;
+import com.mms.EdgeRouter.MessageHandlers.Events.SubjectSubscriptionRequestEvent;
 import com.mms.EdgeRouter.SubscriptionManagement.Events.MrnSubscriptionEvent;
 import com.mms.EdgeRouter.SubscriptionManagement.Events.SubjectSubscriptionEvent;
 import com.mms.EdgeRouter.SubscriptionManagement.Events.SubscriptionEventType;
@@ -13,7 +13,6 @@ import io.netty.handler.codec.http.websocketx.WebSocketCloseStatus;
 import jakarta.annotation.PreDestroy;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import net.maritimeconnectivity.pki.PKIIdentity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -34,12 +33,13 @@ import java.util.concurrent.ConcurrentSkipListSet;
  * The following events are handled:
  * - ConnectionAddedEvent: Subscribes to the MRN associated with the connection, if available.
  * - ConnectionRemovedEvent: Unsubscribes from all subjects and the MRN associated with the connection.
- * - SubscriptionSubjectRequest: Subscribes or unsubscribes the agent to the specified subjects.
- * - SubscriptionMrnRequest: Subscribes or unsubscribes the agent to the MRN associated with their connection.
+ * - SubjectSubscriptionRequestEvent: Subscribes or unsubscribes the agent to the specified subjects.
+ * - MrnSubscriptionRequestEvent: Subscribes or unsubscribes the agent to the MRN associated with their connection.
  * <p>
  * An event is published when the number of subscribers for a subject or an MRN goes from 0 to 1.
  * An event is also published when the number of subscribers for a subject or an MRN goes from 1 to 0.
  * No events are published for other subscriber count changes.
+ * Implements {@link ISubscriptionRepository} interface.
  */
 @Repository
 @Slf4j
@@ -53,7 +53,7 @@ public class SubscriptionRepository implements ISubscriptionRepository
 
 
     /**
-     * Constructor for SubscriptionRepository.
+     * Constructor for {@link SubscriptionRepository}.
      *
      * @param connectionRepository The connection repository used to get PKIIdentity associated with agents.
      * @param eventPublisher       The event publisher used to publish subscription events.
@@ -67,7 +67,7 @@ public class SubscriptionRepository implements ISubscriptionRepository
 
 
     /**
-     * Handles a ConnectionAddedEvent.
+     * Handles a {@link ConnectionAddedEvent}.
      * Subscribes to the MRN associated with the connection, if available.
      * An event is published when the number of subscribers for an MRN goes from 0 to 1.
      *
@@ -78,14 +78,14 @@ public class SubscriptionRepository implements ISubscriptionRepository
     public void handleConnectionAdded(ConnectionAddedEvent event)
     {
         String agentId = event.getAgentID();
-        Optional<PKIIdentity> identityOptional = event.getPkiIdentity();
-        onConnectionAdded(agentId, identityOptional);
-        log.debug("SubscriptionRepository: handleConnectionAdded: agentId={} identity={}", agentId, identityOptional.orElse(null));
+        Optional<String> mrnOptional = event.getMRN();
+        onConnectionAdded(agentId, mrnOptional);
+        log.debug("SubscriptionRepository: handleConnectionAdded: agentId={} mrn={}", agentId, mrnOptional.orElse(null));
     }
 
 
     /**
-     * Handles a ConnectionRemovedEvent.
+     * Handles a {@link ConnectionRemovedEvent}.
      * Unsubscribes from all subjects and the MRN associated with the connection.
      * An event is published when the number of subscribers for a subject or an MRN goes from 1 to 0.
      *
@@ -96,21 +96,21 @@ public class SubscriptionRepository implements ISubscriptionRepository
     public void handleConnectionRemoved(ConnectionRemovedEvent event)
     {
         String agentId = event.getAgentID();
-        Optional<PKIIdentity> identityOptional = event.getPkiIdentity();
-        onConnectionRemoved(agentId, identityOptional);
-        log.debug("SubscriptionRepository: handleConnectionRemoved: agentId={}", agentId);
+        Optional<String> mrnOptional = event.getMRN();
+        onConnectionRemoved(agentId, mrnOptional);
+        log.debug("SubscriptionRepository: handleConnectionRemoved: agentId={}, mrn={}", agentId, mrnOptional.orElse(null));
     }
 
 
     /**
-     * Handles a SubscriptionSubjectRequest.
+     * Handles a {@link SubjectSubscriptionRequestEvent}.
      * Subscribes or unsubscribes the agent to the specified subjects.
      *
-     * @param event The SubscriptionSubjectRequest to handle.
+     * @param event The SubjectSubscriptionRequestEvent to handle.
      */
     @Async("WorkerPool")
     @EventListener
-    public void handleSubjectSubscribeRequest(SubscriptionSubjectRequest event)
+    public void handleSubjectSubscribeRequest(SubjectSubscriptionRequestEvent event)
     {
         String agentId = event.getAgentID();
         List<String> subjects = event.getSubjects();
@@ -129,15 +129,14 @@ public class SubscriptionRepository implements ISubscriptionRepository
 
 
     /**
-     * Handles a SubscriptionMrnRequest event, which is used to subscribe or unsubscribe an agent to the MRN associated with their connection.
-     * If the event type is SUBSCRIPTION, the agent is subscribed to the MRN and an event is published when the number of subscribers for an MRN goes from 0 to 1.
-     * If the event type is UNSUBSCRIPTION, the agent is unsubscribed from the MRN and an event is published when the number of subscribers for an MRN goes from 1 to 0.
+     * Handles a {@link MrnSubscriptionRequestEvent} event.
+     * Subscribes or unsubscribes the agent to the MRN associated with their connection.
      *
-     * @param event The SubscriptionMrnRequest event to handle.
+     * @param event The MrnSubscriptionRequestEvent event to handle.
      */
     @Async("WorkerPool")
     @EventListener
-    public void handleMrnSubscribeRequest(SubscriptionMrnRequest event)
+    public void handleMrnSubscribeRequest(MrnSubscriptionRequestEvent event)
     {
         String agentId = event.getAgentID();
 
@@ -159,7 +158,6 @@ public class SubscriptionRepository implements ISubscriptionRepository
      *
      * @param subject The subject to retrieve subscribers for.
      * @return A list of agent IDs that are currently subscribed to the given subject.
-     * An empty list is returned if the subject is not found in the subscriptionsBySubject map.
      */
     @Override
     public List<String> getSubscribersBySubject(String subject)
@@ -173,6 +171,7 @@ public class SubscriptionRepository implements ISubscriptionRepository
      *
      * @param subjects The list of subjects to retrieve subscribers for.
      * @return A list of agent IDs that are currently subscribed to any of the given subjects.
+     *                    If no agents are subscribed to any of the given subjects, an empty list is returned.
      */
     @Override
     public List<String> getSubscribersBySubjects(List<String> subjects)
@@ -187,6 +186,7 @@ public class SubscriptionRepository implements ISubscriptionRepository
      * Returns a map of subjects to a list of agent IDs that are currently subscribed to the given subject.
      *
      * @return A map of subjects to a list of agent IDs that are currently subscribed to the given subject.
+     *                   If no agents are subscribed to any subjects, an empty map is returned.
      */
     @Override
     public List<String> getSubscribersByMrn(String mrn)
@@ -198,9 +198,9 @@ public class SubscriptionRepository implements ISubscriptionRepository
     /**
      * Returns a list of agent IDs that are currently subscribed to the given MRN.
      *
-     * @param mrn The MRN to retrieve subscribers for.
+     * @param mrns The MRN to retrieve subscribers for.
      * @return A list of agent IDs that are currently subscribed to the given MRN.
-     * An empty list is returned if the MRN is not found in the subscriptionsByMrn map.
+     *                   If no agents are subscribed to the given MRN, an empty list is returned.
      */
     @Override
     public List<String> getSubscribersByMrns(List<String> mrns)
@@ -211,12 +211,6 @@ public class SubscriptionRepository implements ISubscriptionRepository
     }
 
 
-    /**
-     * Returns a list of agent IDs that are currently subscribed to any of the given MRNs.
-     *
-     * @param mrns The list of MRNs to retrieve subscribers for.
-     * @return A list of agent IDs that are currently subscribed to any of the given MRNs.
-     */
     @Override
     public Map<String, List<String>> getSubjectSubscriptionMap()
     {
@@ -227,9 +221,10 @@ public class SubscriptionRepository implements ISubscriptionRepository
 
 
     /**
-     * Returns a map of MRNs to a list of agent IDs that are currently subscribed to the given MRN.
+     * Returns a map of MRNs to a list of agent IDs that are currently subscribed to any MRN.
      *
      * @return A map of MRNs to a list of agent IDs that are currently subscribed to the given MRN.
+     *                  If no agents are subscribed to any MRNs, an empty map is returned.
      */
     @Override
     public Map<String, List<String>> getMrnSubscriptionMap()
@@ -245,16 +240,15 @@ public class SubscriptionRepository implements ISubscriptionRepository
      * If the connection has an associated MRN, the agent will be subscribed to that MRN.
      * An event is published when the number of subscribers for an MRN goes from 0 to 1.
      *
-     * @param agentID          The agent ID associated with the connection.
-     * @param identityOptional The optional PKIIdentity associated with the agent.
+     * @param agentID     The agent ID associated with the connection.
+     * @param mrnOptional The optional MRN associated with the agent.
      */
     @Async("WorkerPool")
-    protected void onConnectionAdded(String agentID, Optional<PKIIdentity> identityOptional)
+    protected void onConnectionAdded(String agentID, Optional<String> mrnOptional)
     {
-        if (identityOptional.isPresent())
+        if (mrnOptional.isPresent())
         {
-            PKIIdentity identity = identityOptional.get();
-            String mrn = identity.getMrn();
+            String mrn = mrnOptional.get();
             subscriptionsByMrn.computeIfAbsent(mrn, k ->
             {
                 MrnSubscriptionEvent mrnSubscriptionEvent = new MrnSubscriptionEvent(this, mrn, SubscriptionEventType.SUBSCRIPTION);
@@ -270,13 +264,12 @@ public class SubscriptionRepository implements ISubscriptionRepository
      * The agent will be unsubscribed from all subjects and the associated MRN, if any.
      * An event is published when the number of subscribers for a subject or an MRN goes from 1 to 0.
      *
-     * @param agentID          The agent ID associated with the connection.
-     * @param identityOptional The optional PKIIdentity associated with the agent.
+     * @param agentID     The agent ID associated with the connection.
+     * @param mrnOptional The optional MRN associated with the agent.
      */
     @Async("WorkerPool")
-    protected void onConnectionRemoved(String agentID, Optional<PKIIdentity> identityOptional)
+    protected void onConnectionRemoved(String agentID, Optional<String> mrnOptional)
     {
-        // Remove agentID from subscriptionsBySubject map
         subscriptionsBySubject.forEach((key, set) ->
         {
             set.remove(agentID);
@@ -289,10 +282,9 @@ public class SubscriptionRepository implements ISubscriptionRepository
         });
 
         // Remove agentID from subscriptionsByMrn map
-        if (identityOptional.isPresent())
+        if (mrnOptional.isPresent())
         {
-            PKIIdentity identity = identityOptional.get();
-            String mrn = identity.getMrn();
+            String mrn = mrnOptional.get();
             subscriptionsByMrn.computeIfPresent(mrn, (key, set) ->
             {
                 set.remove(agentID);
@@ -371,12 +363,11 @@ public class SubscriptionRepository implements ISubscriptionRepository
     @Async("WorkerPool")
     protected void subscribeToMrn(String agentID)
     {
-        Optional<PKIIdentity> identityOptional = connectionRepository.getIdentity(agentID);
+        Optional<String> mrnOptional = connectionRepository.getMRN(agentID);
 
-        if (identityOptional.isPresent())
+        if (mrnOptional.isPresent())
         {
-            PKIIdentity identity = identityOptional.get();
-            String mrn = identity.getMrn();
+            String mrn = mrnOptional.get();
 
             subscriptionsByMrn.computeIfAbsent(mrn, k ->
             {
@@ -402,12 +393,11 @@ public class SubscriptionRepository implements ISubscriptionRepository
     @Async("WorkerPool")
     protected void unsubscribeFromMrn(String agentID)
     {
-        Optional<PKIIdentity> identityOptional = connectionRepository.getIdentity(agentID);
+        Optional<String> mrnOptional = connectionRepository.getMRN(agentID);
 
-        if (identityOptional.isPresent())
+        if (mrnOptional.isPresent())
         {
-            PKIIdentity identity = identityOptional.get();
-            String mrn = identity.getMrn();
+            String mrn = mrnOptional.get();
 
             subscriptionsByMrn.computeIfPresent(mrn, (k, v) ->
             {

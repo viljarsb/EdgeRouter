@@ -5,8 +5,10 @@ import Protocols.MMTP.MessageFormats.MessageType;
 import Protocols.MMTP.MessageFormats.ProtocolMessage;
 import Protocols.MMTP.MessageFormats.SubjectCastApplicationMessage;
 import com.google.protobuf.ByteString;
-import com.mms.EdgeRouter.MessageRelay.Events.RemoteForwardRequestDirected;
-import com.mms.EdgeRouter.MessageRelay.Events.RemoteForwardRequestSubjectCast;
+import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectMessageForwardRequest;
+import com.mms.EdgeRouter.MessageRelay.Events.RemoteDirectMessageForwardRequest;
+import com.mms.EdgeRouter.MessageRelay.Events.RemoteSubjectMessageForwardRequest;
+import io.netty.buffer.ByteBuf;
 import jakarta.jms.BytesMessage;
 import jakarta.jms.DeliveryMode;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
- * This class represents a message relay that sends application messages to remote agents via JMS.
+ * This class represents a message relay that sends application messages to remote agents via JMS/ActiveMQ over TCP.
  */
 @Slf4j
 @Component
@@ -30,7 +32,7 @@ public class RemoteRelay
 
 
     /**
-     * Constructs a new instance of RemoteRelay.
+     * Constructs a new instance of {@link RemoteRelay}.
      *
      * @param jmsTemplate The JmsTemplate to use for sending messages.
      */
@@ -42,39 +44,34 @@ public class RemoteRelay
 
 
     /**
-     * Processes a directed remote forwarding request.
+     * Handles a {@link RemoteDirectMessageForwardRequest} event.
      *
-     * @param remoteForwardRequestDirected The RemoteForwardRequestDirected to process.
+     * @param event The event.
      */
     @Async("WorkerPool")
     @EventListener
-    public void onRemoteForwardRequestDirected(RemoteForwardRequestDirected remoteForwardRequestDirected)
+    public void onRemoteForwardRequestDirected(RemoteDirectMessageForwardRequest event)
     {
-        DirectApplicationMessage message = remoteForwardRequestDirected.getMessage();
+        DirectApplicationMessage message = event.getMessage();
         log.info("Processing direct application message with ID: {}", message.getId());
-        List<String> destinations = remoteForwardRequestDirected.getRecipients();
-        ByteBuffer buffer = serializeMessage(message.toByteString(), MessageType.DIRECT_APPLICATION_MESSAGE);
-        for (String destination : destinations)
-        {
-            sendBytes(destination, buffer);
-        }
+        List<String> destinations = event.getRecipients();
+        serializeAndSend(MessageType.DIRECT_APPLICATION_MESSAGE, message.toByteString(), destinations);
     }
 
 
     /**
-     * Processes a subject-cast remote forwarding request.
+     * Handles a {@link RemoteSubjectMessageForwardRequest} event.
      *
-     * @param remoteForwardRequestSubjectCast The RemoteForwardRequestSubjectCast to process.
+     * @param event The event.
      */
     @Async("WorkerPool")
     @EventListener
-    public void onRemoteForwardRequestSubjectCast(RemoteForwardRequestSubjectCast remoteForwardRequestSubjectCast)
+    public void onRemoteForwardRequestSubjectCast(RemoteSubjectMessageForwardRequest event)
     {
-        SubjectCastApplicationMessage message = remoteForwardRequestSubjectCast.getMessage();
+        SubjectCastApplicationMessage message = event.getMessage();
         log.info("Processing subject cast application message with ID: {}", message.getId());
-        String subject = remoteForwardRequestSubjectCast.getSubject();
-        ByteBuffer buffer = serializeMessage(message.toByteString(), MessageType.SUBJECT_CAST_APPLICATION_MESSAGE);
-        sendBytes(subject, buffer);
+        String subject = event.getSubject();
+        serializeAndSend(MessageType.SUBJECT_CAST_APPLICATION_MESSAGE, message.toByteString(), List.of(subject));
     }
 
 
@@ -87,12 +84,12 @@ public class RemoteRelay
      */
     protected ByteBuffer serializeMessage(ByteString message, MessageType messageType)
     {
-        return ProtocolMessage.newBuilder()
+        ProtocolMessage protocolMessage = ProtocolMessage.newBuilder()
                 .setType(messageType)
                 .setContent(message)
-                .build()
-                .toByteString()
-                .asReadOnlyByteBuffer();
+                .build();
+
+        return ByteBuffer.wrap(protocolMessage.toByteArray());
     }
 
 
@@ -103,7 +100,7 @@ public class RemoteRelay
      * @param payload     The ByteBuffer payload to send.
      */
     @Async("WorkerPool")
-    public void sendBytes(String destination, ByteBuffer payload)
+    protected void sendBytes(String destination, ByteBuffer payload)
     {
         jmsTemplate.send(destination, session ->
         {
@@ -112,5 +109,24 @@ public class RemoteRelay
             message.setJMSDeliveryMode(DeliveryMode.NON_PERSISTENT);
             return message;
         });
+    }
+
+
+    /**
+     * Serializes and sends a message to a list of destinations.
+     *
+     * @param messageType  The MessageType to use for the serialized message.
+     * @param message      The ByteString message to serialize.
+     * @param destinations The list of destinations to send the message to.
+     */
+    @Async("WorkerPool")
+    protected void serializeAndSend(MessageType messageType, ByteString message, List<String> destinations)
+    {
+        ByteBuffer buffer = serializeMessage(message, messageType);
+
+        for (String destination : destinations)
+        {
+            sendBytes(destination, buffer);
+        }
     }
 }

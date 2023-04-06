@@ -1,4 +1,4 @@
-package com.mms.EdgeRouter.AsyncTaskManagement;
+package com.mms.EdgeRouter.AsyncPoolConfigurations;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +13,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * The ConnectionPoolConfiguration class configures the thread pool used for handling connection related async tasks.
+ * It creates a TaskExecutor bean named "ConnectionPool" with the specified core pool size, max pool size, keep-alive
+ * time, and queue capacity, as specified by the config, if no values are given, some defaults are used.
+ */
 @Slf4j
 @EnableAsync(proxyTargetClass = true)
 @Configuration

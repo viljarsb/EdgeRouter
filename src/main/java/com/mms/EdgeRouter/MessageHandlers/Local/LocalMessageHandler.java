@@ -1,4 +1,4 @@
-package com.mms.EdgeRouter.MessageHandler.Local;
+package com.mms.EdgeRouter.MessageHandlers.Local;
 
 import Protocols.MMTP.Exceptions.MMTPValidationException;
 import Protocols.MMTP.MessageFormats.*;
@@ -6,16 +6,15 @@ import Protocols.MMTP.Validators.MMTPValidator;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mms.EdgeRouter.ConnectionManagement.Events.ConnectionCloseRequest;
 import com.mms.EdgeRouter.ConnectionManagement.IConnectionRepository;
-import com.mms.EdgeRouter.MessageHandler.Events.*;
-import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectForwardRequest;
-import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectForwardRequest;
-import com.mms.EdgeRouter.MessageRelay.Events.RemoteForwardRequestDirected;
-import com.mms.EdgeRouter.MessageRelay.Events.RemoteForwardRequestSubjectCast;
+import com.mms.EdgeRouter.MessageHandlers.Events.*;
+import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectMessageForwardRequest;
+import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectMessageForwardRequest;
+import com.mms.EdgeRouter.MessageRelay.Events.RemoteDirectMessageForwardRequest;
+import com.mms.EdgeRouter.MessageRelay.Events.RemoteSubjectMessageForwardRequest;
 import com.mms.EdgeRouter.SubscriptionManagement.Events.SubscriptionEventType;
 import com.mms.EdgeRouter.WebSocket.Events.LocalMessageEvent;
 import io.netty.handler.codec.http.websocketx.WebSocketCloseStatus;
 import lombok.extern.slf4j.Slf4j;
-import net.maritimeconnectivity.pki.PKIIdentity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -28,6 +27,9 @@ import java.util.Optional;
 
 /**
  * Service responsible for handling local messages received from agents.
+ * Parses the messages and delegates to the appropriate message processor.
+ * Publishes events to the event bus so that other services can handle the messages.
+ * Implements {@link ILocalMessageHandler} interface to handle {@link LocalMessageEvent}s.
  */
 @Service
 @Slf4j
@@ -38,7 +40,7 @@ public class LocalMessageHandler implements ILocalMessageHandler
 
 
     /**
-     * Constructs a new LocalMessageHandler with the given dependencies.
+     * Constructs a new {@link LocalMessageHandler} with the given dependencies.
      *
      * @param connectionRepository The connection repository to use.
      * @param eventPublisher       The event publisher to use.
@@ -115,11 +117,11 @@ public class LocalMessageHandler implements ILocalMessageHandler
     @Async("WorkerPool")
     protected void processApplicationMessage(ByteBuffer buffer, MessageType type, String agentID) throws InvalidProtocolBufferException, MMTPValidationException
     {
-        Optional<PKIIdentity> identityOptional = connectionRepository.getIdentity(agentID);
+        Optional<String> MRN = connectionRepository.getMRN(agentID);
 
-        if (identityOptional.isEmpty())
+        if (MRN.isEmpty())
         {
-            log.warn("Received application message from unauthenticated agent {}", agentID);
+            log.warn("Received application message from unauthenticated agent {}, requesting closure of connection.", agentID);
             sendCloseRequest(agentID, WebSocketCloseStatus.POLICY_VIOLATION.code(), "Client sent application message before authentication");
             return;
         }
@@ -148,8 +150,8 @@ public class LocalMessageHandler implements ILocalMessageHandler
         DirectApplicationMessage applicationMessage = DirectApplicationMessage.parseFrom(buffer);
         MMTPValidator.validate(applicationMessage);
 
-        LocalDirectForwardRequest localForwardRequest = new LocalDirectForwardRequest(this, applicationMessage);
-        RemoteForwardRequestDirected remoteForwardingRequest = new RemoteForwardRequestDirected(this, applicationMessage);
+        LocalDirectMessageForwardRequest localForwardRequest = new LocalDirectMessageForwardRequest(this, applicationMessage);
+        RemoteDirectMessageForwardRequest remoteForwardingRequest = new RemoteDirectMessageForwardRequest(this, applicationMessage);
 
         eventPublisher.publishEvent(localForwardRequest);
         eventPublisher.publishEvent(remoteForwardingRequest);
@@ -172,8 +174,8 @@ public class LocalMessageHandler implements ILocalMessageHandler
         SubjectCastApplicationMessage applicationMessage = SubjectCastApplicationMessage.parseFrom(buffer);
         MMTPValidator.validate(applicationMessage);
 
-        LocalSubjectForwardRequest localForwardRequest = new LocalSubjectForwardRequest(this, applicationMessage);
-        RemoteForwardRequestSubjectCast remoteForwardingRequest = new RemoteForwardRequestSubjectCast(this, applicationMessage);
+        LocalSubjectMessageForwardRequest localForwardRequest = new LocalSubjectMessageForwardRequest(this, applicationMessage);
+        RemoteSubjectMessageForwardRequest remoteForwardingRequest = new RemoteSubjectMessageForwardRequest(this, applicationMessage);
 
         eventPublisher.publishEvent(localForwardRequest);
         eventPublisher.publishEvent(remoteForwardingRequest);
@@ -220,13 +222,13 @@ public class LocalMessageHandler implements ILocalMessageHandler
 
         if (!subjects.isEmpty())
         {
-            SubscriptionSubjectRequest subscriptionSubjectRequest = new SubscriptionSubjectRequest(this, agentID, subjects, SubscriptionEventType.SUBSCRIPTION);
+            SubjectSubscriptionRequestEvent subscriptionSubjectRequest = new SubjectSubscriptionRequestEvent(this, agentID, subjects, SubscriptionEventType.SUBSCRIPTION);
             eventPublisher.publishEvent(subscriptionSubjectRequest);
         }
 
         if (register.hasWantDirectMessages())
         {
-            SubscriptionMrnRequest subscriptionMrnRequest = new SubscriptionMrnRequest(this, agentID, SubscriptionEventType.SUBSCRIPTION);
+            MrnSubscriptionRequestEvent subscriptionMrnRequest = new MrnSubscriptionRequestEvent(this, agentID, SubscriptionEventType.SUBSCRIPTION);
             eventPublisher.publishEvent(subscriptionMrnRequest);
         }
     }
@@ -252,13 +254,13 @@ public class LocalMessageHandler implements ILocalMessageHandler
 
         if (!subjects.isEmpty())
         {
-            SubscriptionSubjectRequest subscriptionSubjectRequest = new SubscriptionSubjectRequest(this, agentID, subjects, SubscriptionEventType.UNSUBSCRIPTION);
+            SubjectSubscriptionRequestEvent subscriptionSubjectRequest = new SubjectSubscriptionRequestEvent(this, agentID, subjects, SubscriptionEventType.UNSUBSCRIPTION);
             eventPublisher.publishEvent(subscriptionSubjectRequest);
         }
 
         if (register.hasWantDirectMessages())
         {
-            SubscriptionMrnRequest subscriptionMrnRequest = new SubscriptionMrnRequest(this, agentID, SubscriptionEventType.UNSUBSCRIPTION);
+            MrnSubscriptionRequestEvent subscriptionMrnRequest = new MrnSubscriptionRequestEvent(this, agentID, SubscriptionEventType.UNSUBSCRIPTION);
             eventPublisher.publishEvent(subscriptionMrnRequest);
         }
     }

@@ -1,4 +1,4 @@
-package com.mms.EdgeRouter.MessageHandler.Events;
+package com.mms.EdgeRouter.MessageHandlers.Events;
 
 import com.mms.EdgeRouter.SubscriptionManagement.Events.SubscriptionEventType;
 import org.springframework.context.ApplicationEvent;
@@ -6,19 +6,19 @@ import org.springframework.context.ApplicationEvent;
 /**
  * An event used to request a subscription to MRN directed messages.
  */
-public class SubscriptionMrnRequest extends ApplicationEvent
+public class MrnSubscriptionRequestEvent extends ApplicationEvent
 {
     private final String agentID;
     private final SubscriptionEventType type;
 
     /**
-     * Constructs a new SubscriptionMrnRequest with the given dependencies.
+     * Constructs a new MrnSubscriptionRequestEvent with the given dependencies.
      *
      * @param source  The source of the event.
      * @param agentID The ID of the agent requesting the subscription.
      * @param type    The type of subscription event to request.
      */
-    public SubscriptionMrnRequest(Object source, String agentID, SubscriptionEventType type)
+    public MrnSubscriptionRequestEvent(Object source, String agentID, SubscriptionEventType type)
     {
         super(source);
         this.agentID = agentID;

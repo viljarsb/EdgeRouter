@@ -6,23 +6,34 @@ import org.springframework.context.ApplicationEvent;
 import java.nio.ByteBuffer;
 
 /**
- * An event used to request the forwarding of a SubjectCastApplicationMessage locally.
+ * An event used to request the forwarding of a {@link SubjectCastApplicationMessage} remotely.
  */
-public final class LocalSubjectForwardRequest extends ApplicationEvent
+public class RemoteSubjectMessageForwardRequest extends ApplicationEvent
 {
     private final SubjectCastApplicationMessage message;
 
 
     /**
-     * Constructs a new LocalSubjectForwardRequest with the given dependencies.
+     * Constructs a new {@link RemoteSubjectMessageForwardRequest}.
      *
      * @param source  The source of the event.
      * @param message The SubjectCastApplicationMessage to forward.
      */
-    public LocalSubjectForwardRequest(Object source, SubjectCastApplicationMessage message)
+    public RemoteSubjectMessageForwardRequest(Object source, SubjectCastApplicationMessage message)
     {
         super(source);
         this.message = message;
+    }
+
+
+    /**
+     * Returns the message as a ByteBuffer.
+     *
+     * @return The message as a ByteBuffer.
+     */
+    public ByteBuffer getBuffer()
+    {
+        return ByteBuffer.wrap(message.toByteArray());
     }
 
 
@@ -38,15 +49,10 @@ public final class LocalSubjectForwardRequest extends ApplicationEvent
 
 
     /**
-     * Returns the message as a read-only byte buffer.
+     * Returns the message.
      *
-     * @return The message as a read-only byte buffer.
+     * @return The message.
      */
-    public ByteBuffer getBuffer()
-    {
-        return message.toByteString().asReadOnlyByteBuffer();
-    }
-
     public SubjectCastApplicationMessage getMessage()
     {
         return message;
