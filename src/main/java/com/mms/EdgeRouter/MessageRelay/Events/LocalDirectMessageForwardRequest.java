@@ -1,6 +1,6 @@
 package com.mms.EdgeRouter.MessageRelay.Events;
 
-import Protocols.MMTP.MessageFormats.DirectApplicationMessage;
+import MMTPMessageFormats.DirectApplicationMessage;
 import org.springframework.context.ApplicationEvent;
 
 import java.nio.ByteBuffer;

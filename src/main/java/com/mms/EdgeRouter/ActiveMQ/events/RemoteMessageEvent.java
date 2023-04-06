@@ -14,7 +14,7 @@ public class RemoteMessageEvent extends ApplicationEvent
 
 
     /**
-     * Constructs a new `RemoteMessageEvent` with the given source object and message payload.
+     * Constructs a new `{@link RemoteMessageEvent}` with the given source object and message payload.
      *
      * @param source The object that is the source of the event.
      * @param buffer The ByteBuffer containing the message payload.

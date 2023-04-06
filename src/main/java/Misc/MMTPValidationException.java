@@ -1,4 +1,4 @@
-package Protocols.MMTP.Exceptions;
+package Misc;
 
 public class MMTPValidationException extends Exception
 {

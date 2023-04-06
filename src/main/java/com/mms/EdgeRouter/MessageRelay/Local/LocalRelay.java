@@ -1,9 +1,9 @@
 package com.mms.EdgeRouter.MessageRelay.Local;
 
-import Protocols.MMTP.MessageFormats.DirectApplicationMessage;
-import Protocols.MMTP.MessageFormats.MessageType;
-import Protocols.MMTP.MessageFormats.ProtocolMessage;
-import Protocols.MMTP.MessageFormats.SubjectCastApplicationMessage;
+import MMTPMessageFormats.DirectApplicationMessage;
+import MMTPMessageFormats.MessageType;
+import MMTPMessageFormats.ProtocolMessage;
+import MMTPMessageFormats.SubjectCastApplicationMessage;
 import com.google.protobuf.ByteString;
 import com.mms.EdgeRouter.ConnectionManagement.IConnectionRepository;
 import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectMessageForwardRequest;

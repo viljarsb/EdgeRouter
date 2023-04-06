@@ -24,6 +24,11 @@ public class RemoteReceiver implements MessageListener
     private final ApplicationEventPublisher eventPublisher;
 
 
+    /**
+     * Constructs a new {@link RemoteReceiver} with the given ApplicationEventPublisher.
+     *
+     * @param eventPublisher The ApplicationEventPublisher used to publish RemoteMessageEvents.
+     */
     @Autowired
     public RemoteReceiver(ApplicationEventPublisher eventPublisher)
     {
@@ -34,7 +39,7 @@ public class RemoteReceiver implements MessageListener
     /**
      * This method is called when a new message is received from the ActiveMQ broker.
      * It reads the message payload into a byte array and converts it to a ByteBuffer.
-     * It then publishes a RemoteMessageEvent using the Spring ApplicationEventPublisher.
+     * It then publishes a {@link RemoteMessageEvent} using the Spring ApplicationEventPublisher.
      *
      * @param message The Message object received from the ActiveMQ broker.
      */

@@ -1,14 +1,12 @@
 package com.mms.EdgeRouter.MessageRelay.Remote;
 
-import Protocols.MMTP.MessageFormats.DirectApplicationMessage;
-import Protocols.MMTP.MessageFormats.MessageType;
-import Protocols.MMTP.MessageFormats.ProtocolMessage;
-import Protocols.MMTP.MessageFormats.SubjectCastApplicationMessage;
+import MMTPMessageFormats.DirectApplicationMessage;
+import MMTPMessageFormats.MessageType;
+import MMTPMessageFormats.ProtocolMessage;
+import MMTPMessageFormats.SubjectCastApplicationMessage;
 import com.google.protobuf.ByteString;
-import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectMessageForwardRequest;
 import com.mms.EdgeRouter.MessageRelay.Events.RemoteDirectMessageForwardRequest;
 import com.mms.EdgeRouter.MessageRelay.Events.RemoteSubjectMessageForwardRequest;
-import io.netty.buffer.ByteBuf;
 import jakarta.jms.BytesMessage;
 import jakarta.jms.DeliveryMode;
 import lombok.extern.slf4j.Slf4j;

@@ -10,7 +10,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-
+/**
+ * RemoteSubscriber is a class that subscribes to a topic on an ActiveMQ broker.
+ */
 @Slf4j
 @Component
 public class RemoteSubscriber
@@ -22,6 +24,11 @@ public class RemoteSubscriber
     private final ConcurrentHashMap<String, DefaultMessageListenerContainer> listenerContainers = new ConcurrentHashMap<>();
 
 
+    /**
+     * Constructs a new {@link RemoteSubscriber} with the given ConnectionFactory and RemoteReceiver.
+     * @param connectionFactory
+     * @param activeMQReceiver
+     */
     @Autowired
     public RemoteSubscriber(@Qualifier("activeMQConnectionFactory") ConnectionFactory connectionFactory, RemoteReceiver activeMQReceiver)
     {
@@ -32,7 +39,7 @@ public class RemoteSubscriber
 
     /**
      * Subscribes to the specified topic if not already subscribed.
-     * Creates a new DefaultMessageListenerContainer and starts listening for messages.
+     * Creates a new listener and starts listening for messages.
      *
      * @param topicName The name of the topic to subscribe to.
      */

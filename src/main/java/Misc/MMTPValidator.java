@@ -1,12 +1,10 @@
-package Protocols.MMTP.Validators;
+package Misc;
 
 
-import Misc.MrnValidator;
-import Protocols.MMTP.Exceptions.MMTPValidationException;
-import Protocols.MMTP.MessageFormats.DirectApplicationMessage;
-import Protocols.MMTP.MessageFormats.Register;
-import Protocols.MMTP.MessageFormats.SubjectCastApplicationMessage;
-import Protocols.MMTP.MessageFormats.Unregister;
+import MMTPMessageFormats.DirectApplicationMessage;
+import MMTPMessageFormats.Register;
+import MMTPMessageFormats.SubjectCastApplicationMessage;
+import MMTPMessageFormats.Unregister;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

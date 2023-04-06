@@ -1,6 +1,6 @@
 package com.mms.EdgeRouter.MessageRelay.Events;
 
-import Protocols.MMTP.MessageFormats.SubjectCastApplicationMessage;
+import MMTPMessageFormats.SubjectCastApplicationMessage;
 import org.springframework.context.ApplicationEvent;
 
 import java.nio.ByteBuffer;

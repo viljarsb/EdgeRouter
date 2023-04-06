@@ -18,7 +18,7 @@ import org.springframework.jms.core.JmsTemplate;
 @Configuration
 public class RemoteConfig
 {
-    @Value("${remote.broker:#{null}}")
+    @Value("${mms.remote.broker:#{null}}")
     private String brokerUrl;
 
     @Value("${spring.artemis.user:admin}")

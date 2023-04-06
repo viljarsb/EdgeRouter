@@ -1,11 +1,14 @@
 package com.mms.EdgeRouter.MessageHandlers.Local;
 
-import Protocols.MMTP.Exceptions.MMTPValidationException;
+import MMTPMessageFormats.*;
+import Misc.MMTPValidationException;
 import Protocols.MMTP.MessageFormats.*;
-import Protocols.MMTP.Validators.MMTPValidator;
+import Misc.MMTPValidator;
+import Protocols.MessageFormats.*;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mms.EdgeRouter.ConnectionManagement.Events.ConnectionCloseRequest;
 import com.mms.EdgeRouter.ConnectionManagement.IConnectionRepository;
+import com.mms.EdgeRouter.MessageFormats.*;
 import com.mms.EdgeRouter.MessageHandlers.Events.*;
 import com.mms.EdgeRouter.MessageRelay.Events.LocalDirectMessageForwardRequest;
 import com.mms.EdgeRouter.MessageRelay.Events.LocalSubjectMessageForwardRequest;
